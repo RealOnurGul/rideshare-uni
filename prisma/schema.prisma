@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  university    String?
+  createdAt     DateTime  @default(now())
+
+  accounts Account[]
+  sessions Session[]
+  rides    Ride[]    @relation("DriverRides")
+  bookings Booking[] @relation("PassengerBookings")
+}
+
+model Ride {
+  id             String   @id @default(cuid())
+  driverId       String
+  origin         String
+  destination    String
+  dateTime       DateTime
+  pricePerSeat   Float
+  seatsTotal     Int
+  seatsAvailable Int
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  driver   User      @relation("DriverRides", fields: [driverId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+}
+
+model Booking {
+  id          String   @id @default(cuid())
+  rideId      String
+  passengerId String
+  status      String   @default("pending") // "pending" | "accepted" | "declined"
+  createdAt   DateTime @default(now())
+
+  ride      Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  passenger User @relation("PassengerBookings", fields: [passengerId], references: [id], onDelete: Cascade)
+
+  @@unique([rideId, passengerId])
+}
+
