@@ -19,6 +19,7 @@ A rideshare platform exclusively for Canadian university students. Share rides, 
 - 🚙 **Vehicle Management** - Add and manage your vehicles
 - 🎛️ **Ride Preferences** - Set luggage, pets, smoking, music preferences
 - 🔔 **In-App Notifications** - Real-time booking updates
+- 💬 **Ride Chats** - Dedicated chat page with group conversations per ride
 - 📜 **Ride History** - View past completed/cancelled rides
 - ❌ **Cancel Rides/Bookings** - Cancel with automatic notifications
 
@@ -130,6 +131,9 @@ src/
 | GET | `/api/notifications` | Get user notifications |
 | POST | `/api/notifications` | Mark notifications as read |
 | GET | `/api/locations` | Get unique locations from DB |
+| GET | `/api/chats` | Get all user's ride chats |
+| GET | `/api/rides/[id]/messages` | Get ride chat messages |
+| POST | `/api/rides/[id]/messages` | Send a chat message |
 
 ## Database Models
 
@@ -140,6 +144,7 @@ src/
 | Ride | Ride offers with location, preferences, status |
 | Booking | Seat requests with status tracking |
 | Notification | In-app notification system |
+| Message | Ride chat messages |
 
 ## Workflow
 
@@ -149,7 +154,8 @@ src/
 4. **Find rides**: Browse, filter by date/location
 5. **Request a seat**: Driver gets notified
 6. **Manage bookings**: Accept/decline in Dashboard
-7. **Track history**: View past rides with "Show history" toggle
+7. **Chat**: Use the Chats page to message your ride groups
+8. **Track history**: View past rides with "Show history" toggle
 
 ## Database
 

@@ -81,6 +81,8 @@ export default function NotificationBell() {
         return "🚫";
       case "ride_cancelled":
         return "⚠️";
+      case "new_message":
+        return "💬";
       default:
         return "🔔";
     }

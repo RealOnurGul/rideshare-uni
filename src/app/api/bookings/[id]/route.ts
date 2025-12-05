@@ -130,6 +130,16 @@ export async function PATCH(
     const passengerName = booking.passenger.name || "Passenger";
 
     if (status === "accepted") {
+      // Create system message for joining
+      await prisma.message.create({
+        data: {
+          rideId: booking.rideId,
+          senderId: null,
+          content: `🎉 ${passengerName} has joined the ride!`,
+          isSystem: true,
+        },
+      });
+
       await notifyBookingAccepted(
         booking.passengerId,
         driverName,
@@ -148,6 +158,18 @@ export async function PATCH(
         booking.ride.destination
       );
     } else if (status === "cancelled") {
+      // Create system message for leaving (only if was accepted)
+      if (booking.status === "accepted") {
+        await prisma.message.create({
+          data: {
+            rideId: booking.rideId,
+            senderId: null,
+            content: `👋 ${passengerName} has left the ride.`,
+            isSystem: true,
+          },
+        });
+      }
+
       await notifyBookingCancelled(
         booking.ride.driverId,
         passengerName,

@@ -46,6 +46,15 @@ export function Navbar() {
                 >
                   Dashboard
                 </Link>
+                <Link
+                  href="/chats"
+                  className="text-gray-600 hover:text-purple-600 transition-colors font-medium cursor-pointer flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  Chats
+                </Link>
               </>
             )}
           </div>
@@ -156,6 +165,16 @@ export function Navbar() {
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Dashboard
+                  </Link>
+                  <Link
+                    href="/chats"
+                    className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer flex items-center gap-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    Chats
                   </Link>
                   <Link
                     href="/vehicles"
