@@ -114,9 +114,11 @@ export default function RidesPage() {
     try {
       const res = await fetch(`/api/rides?${params.toString()}`);
       const data = await res.json();
-      setRides(data);
+      // Ensure data is an array before setting
+      setRides(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch rides:", error);
+      setRides([]);
     } finally {
       setIsLoading(false);
     }
@@ -461,13 +463,13 @@ export default function RidesPage() {
                             ) : (
                               <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
                                 <span className="text-purple-600 font-semibold">
-                                  {ride.driver.name?.[0] || ride.driver.email?.[0]?.toUpperCase() || "?"}
+                                  {ride.driver.name?.[0] || "D"}
                                 </span>
                               </div>
                             )}
                             <div>
                               <p className="font-medium text-gray-900 text-sm">
-                                {ride.driver.name || ride.driver.email?.split("@")[0]}
+                                {ride.driver.name || "Driver"}
                               </p>
                               <p className="text-xs text-gray-500">{ride.driver.university}</p>
                             </div>

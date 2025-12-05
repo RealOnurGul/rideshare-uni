@@ -22,3 +22,7 @@ export function getUniversityFromEmail(email: string): string | null {
   return DOMAIN_TO_UNIVERSITY[domain] || null;
 }
 
+export function getUniversityName(domain: string): string | null {
+  return DOMAIN_TO_UNIVERSITY[domain.toLowerCase()] || null;
+}
+

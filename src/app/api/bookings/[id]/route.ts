@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  notifyBookingAccepted,
+  notifyBookingDeclined,
+  notifyBookingCancelled,
+} from "@/lib/notifications";
 
-// PATCH /api/bookings/[id] - Update booking status (accept/decline)
+// PATCH /api/bookings/[id] - Update booking status (accept/decline/cancel)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,18 +24,23 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body;
 
-    if (!status || !["accepted", "declined"].includes(status)) {
+    if (!status || !["accepted", "declined", "cancelled"].includes(status)) {
       return NextResponse.json(
-        { error: "Invalid status. Must be 'accepted' or 'declined'" },
+        { error: "Invalid status. Must be 'accepted', 'declined', or 'cancelled'" },
         { status: 400 }
       );
     }
 
-    // Get the booking with ride info
+    // Get the booking with ride and user info
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
-        ride: true,
+        ride: {
+          include: {
+            driver: { select: { id: true, name: true } },
+          },
+        },
+        passenger: { select: { id: true, name: true } },
       },
     });
 
@@ -38,16 +48,37 @@ export async function PATCH(
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Only the driver can accept/decline bookings
-    if (booking.ride.driverId !== session.user.id) {
+    const isDriver = booking.ride.driverId === session.user.id;
+    const isPassenger = booking.passengerId === session.user.id;
+
+    // Permission checks
+    if (status === "cancelled") {
+      // Only the passenger can cancel their own booking
+      if (!isPassenger) {
+        return NextResponse.json(
+          { error: "Only the passenger can cancel their booking" },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Only the driver can accept/decline
+      if (!isDriver) {
+        return NextResponse.json(
+          { error: "Only the driver can accept or decline bookings" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Check if booking can be updated
+    if (status === "cancelled" && booking.status === "cancelled") {
       return NextResponse.json(
-        { error: "Only the driver can update booking status" },
-        { status: 403 }
+        { error: "Booking is already cancelled" },
+        { status: 400 }
       );
     }
 
-    // Check if booking is already processed
-    if (booking.status !== "pending") {
+    if ((status === "accepted" || status === "declined") && booking.status !== "pending") {
       return NextResponse.json(
         { error: "Booking has already been processed" },
         { status: 400 }
@@ -69,38 +100,63 @@ export async function PATCH(
         data: { status },
         include: {
           passenger: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              university: true,
-            },
+            select: { id: true, name: true, university: true },
           },
           ride: {
-            select: {
-              id: true,
-              origin: true,
-              destination: true,
-              dateTime: true,
-            },
+            select: { id: true, origin: true, destination: true, dateTime: true },
           },
         },
       });
 
-      // If accepted, decrement available seats
+      // Handle seat count changes
       if (status === "accepted") {
         await tx.ride.update({
           where: { id: booking.rideId },
-          data: {
-            seatsAvailable: {
-              decrement: 1,
-            },
-          },
+          data: { seatsAvailable: { decrement: 1 } },
+        });
+      } else if (status === "cancelled" && booking.status === "accepted") {
+        // If cancelling an accepted booking, restore the seat
+        await tx.ride.update({
+          where: { id: booking.rideId },
+          data: { seatsAvailable: { increment: 1 } },
         });
       }
 
       return updated;
     });
+
+    // Send notifications
+    const driverName = booking.ride.driver.name || "Driver";
+    const passengerName = booking.passenger.name || "Passenger";
+
+    if (status === "accepted") {
+      await notifyBookingAccepted(
+        booking.passengerId,
+        driverName,
+        booking.rideId,
+        bookingId,
+        booking.ride.origin,
+        booking.ride.destination
+      );
+    } else if (status === "declined") {
+      await notifyBookingDeclined(
+        booking.passengerId,
+        driverName,
+        booking.rideId,
+        bookingId,
+        booking.ride.origin,
+        booking.ride.destination
+      );
+    } else if (status === "cancelled") {
+      await notifyBookingCancelled(
+        booking.ride.driverId,
+        passengerName,
+        booking.rideId,
+        bookingId,
+        booking.ride.origin,
+        booking.ride.destination
+      );
+    }
 
     return NextResponse.json(updatedBooking);
   } catch (error) {
@@ -111,4 +167,3 @@ export async function PATCH(
     );
   }
 }
-

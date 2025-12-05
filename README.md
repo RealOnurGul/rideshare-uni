@@ -16,6 +16,11 @@ A rideshare platform exclusively for Canadian university students. Share rides, 
 - 📅 **Date Range Filters** - Find rides within your travel window
 - 📊 **Dashboard** - Manage your rides and bookings
 - 👤 **Profile** - View stats and manage your account
+- 🚙 **Vehicle Management** - Add and manage your vehicles
+- 🎛️ **Ride Preferences** - Set luggage, pets, smoking, music preferences
+- 🔔 **In-App Notifications** - Real-time booking updates
+- 📜 **Ride History** - View past completed/cancelled rides
+- ❌ **Cancel Rides/Bookings** - Cancel with automatic notifications
 
 ## Getting Started
 
@@ -94,10 +99,15 @@ GOOGLE_CLIENT_SECRET="your-client-secret"
 src/
 ├── app/
 │   ├── api/           # API routes
+│   │   ├── bookings/  # Booking management
+│   │   ├── notifications/ # In-app notifications
+│   │   ├── rides/     # Ride CRUD
+│   │   └── vehicles/  # Vehicle management
 │   ├── auth/          # Auth pages
 │   ├── dashboard/     # User dashboard
 │   ├── profile/       # User profile
-│   └── rides/         # Ride pages
+│   ├── rides/         # Ride pages
+│   └── vehicles/      # Vehicle management page
 ├── components/        # React components
 ├── lib/              # Utilities
 └── types/            # TypeScript types
@@ -110,9 +120,36 @@ src/
 | GET | `/api/rides` | List rides (with filters) |
 | POST | `/api/rides` | Create ride |
 | GET | `/api/rides/[id]` | Get ride details |
+| PATCH | `/api/rides/[id]` | Update ride (cancel/complete) |
 | POST | `/api/rides/[id]/book` | Request seat |
-| PATCH | `/api/bookings/[id]` | Accept/decline booking |
+| PATCH | `/api/bookings/[id]` | Accept/decline/cancel booking |
+| GET | `/api/vehicles` | Get user's vehicles |
+| POST | `/api/vehicles` | Add vehicle |
+| PATCH | `/api/vehicles/[id]` | Update vehicle |
+| DELETE | `/api/vehicles/[id]` | Delete vehicle |
+| GET | `/api/notifications` | Get user notifications |
+| POST | `/api/notifications` | Mark notifications as read |
 | GET | `/api/locations` | Get unique locations from DB |
+
+## Database Models
+
+| Model | Description |
+|-------|-------------|
+| User | User accounts with Google OAuth |
+| Vehicle | User vehicles (make, model, year, color, plate) |
+| Ride | Ride offers with location, preferences, status |
+| Booking | Seat requests with status tracking |
+| Notification | In-app notification system |
+
+## Workflow
+
+1. **Sign in** with Google
+2. **Add a vehicle** in My Vehicles
+3. **Offer a ride**: Select route → Choose vehicle & preferences → Set details
+4. **Find rides**: Browse, filter by date/location
+5. **Request a seat**: Driver gets notified
+6. **Manage bookings**: Accept/decline in Dashboard
+7. **Track history**: View past rides with "Show history" toggle
 
 ## Database
 
@@ -120,6 +157,14 @@ Each installation has its own local SQLite database. When you clone this repo:
 - Run `npx prisma db push` to create tables
 - Your database starts empty (no shared data)
 - View/edit data with `npx prisma studio`
+
+## Deploying to Vercel (Free)
+
+When ready to deploy:
+1. Switch SQLite to [Neon](https://neon.tech) or [Supabase](https://supabase.com) (free PostgreSQL)
+2. Update `prisma/schema.prisma`: change `provider` from `"sqlite"` to `"postgresql"`
+3. Set `DATABASE_URL` in Vercel environment variables
+4. Deploy!
 
 ## Service Area
 

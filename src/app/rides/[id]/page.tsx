@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import RideDetailMap from "@/components/ride-detail-map";
 
 interface Passenger {
@@ -28,6 +29,15 @@ interface Driver {
   image: string | null;
 }
 
+interface Vehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  licensePlate: string;
+}
+
 interface Ride {
   id: string;
   origin: string;
@@ -40,9 +50,15 @@ interface Ride {
   pricePerSeat: number;
   seatsTotal: number;
   seatsAvailable: number;
+  status: string;
+  luggageSpace: string;
+  petsAllowed: boolean;
+  smokingAllowed: boolean;
+  musicAllowed: boolean;
   notes: string | null;
   createdAt: string;
   driver: Driver;
+  vehicle: Vehicle | null;
   bookings: Booking[];
 }
 
@@ -53,11 +69,13 @@ export default function RideDetailPage({
 }) {
   const { id } = use(params);
   const { data: session } = useSession();
+  const router = useRouter();
   const [ride, setRide] = useState<Ride | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBooking, setIsBooking] = useState(false);
   const [bookingMessage, setBookingMessage] = useState("");
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchRide = async () => {
     try {
@@ -132,6 +150,48 @@ export default function RideDetailPage({
     }
   };
 
+  const handleCancelRide = async () => {
+    if (!confirm("Are you sure you want to cancel this ride? All passengers will be notified.")) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/rides/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+
+      if (res.ok) {
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error cancelling ride:", error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancelBooking = async (bookingId: string) => {
+    if (!confirm("Are you sure you want to cancel your booking?")) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+
+      if (res.ok) {
+        fetchRide();
+      }
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-CA", {
@@ -148,6 +208,30 @@ export default function RideDetailPage({
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const getLuggageLabel = (size: string) => {
+    const labels: Record<string, string> = {
+      none: "No luggage space",
+      small: "Small (backpack)",
+      medium: "Medium (carry-on)",
+      large: "Large (suitcases)",
+    };
+    return labels[size] || "Medium";
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      upcoming: "bg-blue-100 text-blue-700",
+      in_progress: "bg-purple-100 text-purple-700",
+      completed: "bg-green-100 text-green-700",
+      cancelled: "bg-red-100 text-red-700",
+    };
+    return (
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status] || styles.upcoming}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1).replace("_", " ")}
+      </span>
+    );
   };
 
   const isDriver = session?.user?.id === ride?.driver.id;
@@ -176,10 +260,7 @@ export default function RideDetailPage({
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Ride Not Found</h1>
           <p className="text-gray-600 mb-6">This ride may have been removed or doesn&apos;t exist.</p>
-          <Link
-            href="/rides"
-            className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors"
-          >
+          <Link href="/rides" className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors cursor-pointer">
             Browse Rides
           </Link>
         </div>
@@ -192,15 +273,38 @@ export default function RideDetailPage({
   return (
     <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <Link
-          href="/rides"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 transition-colors mb-6"
-        >
+        <Link href="/rides" className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 transition-colors mb-6 cursor-pointer">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Back to rides
         </Link>
+
+        {/* Status Banner */}
+        {ride.status !== "upcoming" && (
+          <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+            ride.status === "cancelled" ? "bg-red-50 border border-red-200" :
+            ride.status === "completed" ? "bg-green-50 border border-green-200" :
+            "bg-purple-50 border border-purple-200"
+          }`}>
+            {ride.status === "cancelled" && (
+              <>
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span className="font-medium text-red-700">This ride has been cancelled</span>
+              </>
+            )}
+            {ride.status === "completed" && (
+              <>
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="font-medium text-green-700">This ride has been completed</span>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
@@ -209,17 +313,20 @@ export default function RideDetailPage({
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    {getStatusBadge(ride.status)}
+                  </div>
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-purple-600"></div>
-                      <span className="text-xl font-bold text-gray-900">{ride.origin}</span>
+                      <span className="text-xl font-bold text-gray-900">{ride.origin.split(",")[0]}</span>
                     </div>
                     <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-purple-400"></div>
-                      <span className="text-xl font-bold text-gray-900">{ride.destination}</span>
+                      <span className="text-xl font-bold text-gray-900">{ride.destination.split(",")[0]}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 text-gray-600">
@@ -256,6 +363,57 @@ export default function RideDetailPage({
               )}
             </div>
 
+            {/* Vehicle & Preferences */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              {ride.vehicle && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-3">Vehicle</h3>
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {ride.vehicle.year} {ride.vehicle.make} {ride.vehicle.model}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {ride.vehicle.color} • {ride.vehicle.licensePlate}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <h3 className="font-semibold text-gray-900 mb-3">Ride Preferences</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-lg">🧳</span>
+                  <span className="text-sm text-gray-700">{getLuggageLabel(ride.luggageSpace)}</span>
+                </div>
+                <div className={`flex items-center gap-2 p-3 rounded-lg ${ride.petsAllowed ? "bg-green-50" : "bg-gray-50"}`}>
+                  <span className="text-lg">🐾</span>
+                  <span className={`text-sm ${ride.petsAllowed ? "text-green-700" : "text-gray-500"}`}>
+                    {ride.petsAllowed ? "Pets allowed" : "No pets"}
+                  </span>
+                </div>
+                <div className={`flex items-center gap-2 p-3 rounded-lg ${ride.smokingAllowed ? "bg-green-50" : "bg-gray-50"}`}>
+                  <span className="text-lg">🚬</span>
+                  <span className={`text-sm ${ride.smokingAllowed ? "text-green-700" : "text-gray-500"}`}>
+                    {ride.smokingAllowed ? "Smoking allowed" : "No smoking"}
+                  </span>
+                </div>
+                <div className={`flex items-center gap-2 p-3 rounded-lg ${ride.musicAllowed ? "bg-green-50" : "bg-gray-50"}`}>
+                  <span className="text-lg">🎵</span>
+                  <span className={`text-sm ${ride.musicAllowed ? "text-green-700" : "text-gray-500"}`}>
+                    {ride.musicAllowed ? "Music on" : "No music"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Notes */}
             {ride.notes && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
@@ -265,7 +423,7 @@ export default function RideDetailPage({
             )}
 
             {/* Driver Bookings Management */}
-            {isDriver && (
+            {isDriver && ride.status === "upcoming" && (
               <div className="space-y-4">
                 {pendingBookings && pendingBookings.length > 0 && (
                   <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
@@ -277,10 +435,7 @@ export default function RideDetailPage({
                     </h3>
                     <div className="space-y-3">
                       {pendingBookings.map((booking) => (
-                        <div
-                          key={booking.id}
-                          className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-100 rounded-xl"
-                        >
+                        <div key={booking.id} className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-100 rounded-xl">
                           <div className="flex items-center gap-3">
                             {booking.passenger.image ? (
                               <img src={booking.passenger.image} alt="" className="w-10 h-10 rounded-full" />
@@ -293,7 +448,7 @@ export default function RideDetailPage({
                             )}
                             <div>
                               <p className="font-medium text-gray-900">
-                                {booking.passenger.name || booking.passenger.email?.split("@")[0]}
+                                {booking.passenger.name || "Passenger"}
                               </p>
                               <p className="text-sm text-gray-500">{booking.passenger.university}</p>
                             </div>
@@ -302,14 +457,14 @@ export default function RideDetailPage({
                             <button
                               onClick={() => handleUpdateBooking(booking.id, "accepted")}
                               disabled={updatingBookingId === booking.id}
-                              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                             >
                               Accept
                             </button>
                             <button
                               onClick={() => handleUpdateBooking(booking.id, "declined")}
                               disabled={updatingBookingId === booking.id}
-                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                             >
                               Decline
                             </button>
@@ -330,10 +485,7 @@ export default function RideDetailPage({
                     </h3>
                     <div className="space-y-3">
                       {acceptedBookings.map((booking) => (
-                        <div
-                          key={booking.id}
-                          className="flex items-center gap-3 p-4 bg-green-50 border border-green-100 rounded-xl"
-                        >
+                        <div key={booking.id} className="flex items-center gap-3 p-4 bg-green-50 border border-green-100 rounded-xl">
                           {booking.passenger.image ? (
                             <img src={booking.passenger.image} alt="" className="w-10 h-10 rounded-full" />
                           ) : (
@@ -345,10 +497,10 @@ export default function RideDetailPage({
                           )}
                           <div className="flex-1">
                             <p className="font-medium text-gray-900">
-                              {booking.passenger.name || booking.passenger.email?.split("@")[0]}
+                              {booking.passenger.name || "Passenger"}
                             </p>
                             <p className="text-sm text-gray-500">
-                              {booking.passenger.email} • {booking.passenger.university}
+                              {booking.passenger.university}
                             </p>
                           </div>
                         </div>
@@ -356,6 +508,18 @@ export default function RideDetailPage({
                     </div>
                   </div>
                 )}
+
+                {/* Cancel Ride Button */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-3">Actions</h3>
+                  <button
+                    onClick={handleCancelRide}
+                    disabled={actionLoading}
+                    className="px-4 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel This Ride
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -377,7 +541,7 @@ export default function RideDetailPage({
                 )}
                 <div>
                   <p className="font-semibold text-gray-900">
-                    {ride.driver.name || ride.driver.email?.split("@")[0]}
+                    {ride.driver.name || "Driver"}
                   </p>
                   <p className="text-sm text-gray-500">{ride.driver.university}</p>
                 </div>
@@ -405,7 +569,7 @@ export default function RideDetailPage({
             </div>
 
             {/* Booking Card */}
-            {!isDriver && (
+            {!isDriver && ride.status === "upcoming" && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
                 {userBooking ? (
                   <div>
@@ -417,9 +581,16 @@ export default function RideDetailPage({
                           </svg>
                         </div>
                         <h3 className="font-semibold text-green-800 mb-2">Booking Confirmed!</h3>
-                        <p className="text-sm text-gray-600">
-                          Contact the driver at <span className="font-medium">{ride.driver.email}</span>
+                        <p className="text-sm text-gray-600 mb-4">
+                          You're all set! The driver will contact you before the ride.
                         </p>
+                        <button
+                          onClick={() => handleCancelBooking(userBooking.id)}
+                          disabled={actionLoading}
+                          className="text-sm text-red-600 hover:text-red-700 font-medium cursor-pointer disabled:opacity-50"
+                        >
+                          Cancel my booking
+                        </button>
                       </div>
                     )}
                     {userBooking.status === "pending" && (
@@ -430,7 +601,14 @@ export default function RideDetailPage({
                           </svg>
                         </div>
                         <h3 className="font-semibold text-yellow-800 mb-2">Pending Approval</h3>
-                        <p className="text-sm text-gray-600">Waiting for driver confirmation</p>
+                        <p className="text-sm text-gray-600 mb-4">Waiting for driver confirmation</p>
+                        <button
+                          onClick={() => handleCancelBooking(userBooking.id)}
+                          disabled={actionLoading}
+                          className="text-sm text-red-600 hover:text-red-700 font-medium cursor-pointer disabled:opacity-50"
+                        >
+                          Cancel request
+                        </button>
                       </div>
                     )}
                     {userBooking.status === "declined" && (
@@ -444,13 +622,24 @@ export default function RideDetailPage({
                         <p className="text-sm text-gray-600">Try finding another ride</p>
                       </div>
                     )}
+                    {userBooking.status === "cancelled" && (
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                        <h3 className="font-semibold text-gray-800 mb-2">Booking Cancelled</h3>
+                        <p className="text-sm text-gray-600">You cancelled this booking</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div>
                     <button
                       onClick={handleBookRide}
                       disabled={isBooking || ride.seatsAvailable <= 0 || !session}
-                      className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-press"
+                      className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {isBooking ? (
                         <span className="flex items-center justify-center gap-2">
@@ -477,7 +666,7 @@ export default function RideDetailPage({
                     )}
                     {!session && (
                       <p className="mt-3 text-sm text-center text-gray-500">
-                        <Link href="/auth/signin" className="text-purple-600 hover:text-purple-700 font-medium">
+                        <Link href="/auth/signin" className="text-purple-600 hover:text-purple-700 font-medium cursor-pointer">
                           Sign in
                         </Link>{" "}to request a seat
                       </p>

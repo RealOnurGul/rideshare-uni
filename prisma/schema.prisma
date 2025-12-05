@@ -49,17 +49,36 @@ model User {
   emailVerified DateTime?
   image         String?
   university    String?
+  phone         String?
   createdAt     DateTime  @default(now())
 
-  accounts Account[]
-  sessions Session[]
-  rides    Ride[]    @relation("DriverRides")
-  bookings Booking[] @relation("PassengerBookings")
+  accounts      Account[]
+  sessions      Session[]
+  vehicles      Vehicle[]
+  rides         Ride[]    @relation("DriverRides")
+  bookings      Booking[] @relation("PassengerBookings")
+  notifications Notification[]
+}
+
+model Vehicle {
+  id           String   @id @default(cuid())
+  userId       String
+  make         String   // Toyota, Honda, etc.
+  model        String   // Camry, Civic, etc.
+  year         Int
+  color        String
+  licensePlate String
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rides Ride[]
 }
 
 model Ride {
   id             String   @id @default(cuid())
   driverId       String
+  vehicleId      String?
   origin         String
   originLat      Float?
   originLng      Float?
@@ -71,9 +90,21 @@ model Ride {
   seatsTotal     Int
   seatsAvailable Int
   notes          String?
+  
+  // Ride status: "upcoming", "in_progress", "completed", "cancelled"
+  status         String   @default("upcoming")
+  
+  // Ride preferences
+  luggageSpace   String   @default("medium") // "none", "small", "medium", "large"
+  petsAllowed    Boolean  @default(false)
+  smokingAllowed Boolean  @default(false)
+  musicAllowed   Boolean  @default(true)
+  
   createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   driver   User      @relation("DriverRides", fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle  Vehicle?  @relation(fields: [vehicleId], references: [id])
   bookings Booking[]
 }
 
@@ -81,11 +112,27 @@ model Booking {
   id          String   @id @default(cuid())
   rideId      String
   passengerId String
+  // Status: "pending", "accepted", "declined", "cancelled"
   status      String   @default("pending")
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   ride      Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
   passenger User @relation("PassengerBookings", fields: [passengerId], references: [id], onDelete: Cascade)
 
   @@unique([rideId, passengerId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "booking_request", "booking_accepted", "booking_declined", "booking_cancelled", "ride_cancelled"
+  title     String
+  message   String
+  rideId    String?
+  bookingId String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

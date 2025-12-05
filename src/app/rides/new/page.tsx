@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -10,6 +10,16 @@ interface Location {
   lat: number;
   lng: number;
   address: string;
+}
+
+interface Vehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  licensePlate: string;
+  isDefault: boolean;
 }
 
 export default function NewRidePage() {
@@ -22,6 +32,17 @@ export default function NewRidePage() {
   const [origin, setOrigin] = useState<Location | null>(null);
   const [destination, setDestination] = useState<Location | null>(null);
 
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
+
+  const [preferences, setPreferences] = useState({
+    luggageSpace: "medium",
+    petsAllowed: false,
+    smokingAllowed: false,
+    musicAllowed: true,
+  });
+
   const [formData, setFormData] = useState({
     date: "",
     time: "",
@@ -31,6 +52,32 @@ export default function NewRidePage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchVehicles();
+    }
+  }, [session]);
+
+  const fetchVehicles = async () => {
+    try {
+      const res = await fetch("/api/vehicles");
+      if (res.ok) {
+        const data = await res.json();
+        setVehicles(data);
+        const defaultVehicle = data.find((v: Vehicle) => v.isDefault);
+        if (defaultVehicle) {
+          setSelectedVehicleId(defaultVehicle.id);
+        } else if (data.length > 0) {
+          setSelectedVehicleId(data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching vehicles:", err);
+    } finally {
+      setLoadingVehicles(false);
+    }
+  };
 
   const validateStep1 = () => {
     if (!origin) {
@@ -46,6 +93,15 @@ export default function NewRidePage() {
   };
 
   const validateStep2 = () => {
+    if (!selectedVehicleId) {
+      setError("Please select a vehicle");
+      return false;
+    }
+    setError("");
+    return true;
+  };
+
+  const validateStep3 = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.date) newErrors.date = "Date is required";
@@ -69,11 +125,13 @@ export default function NewRidePage() {
   const handleNext = () => {
     if (step === 1 && validateStep1()) {
       setStep(2);
+    } else if (step === 2 && validateStep2()) {
+      setStep(3);
     }
   };
 
   const handleBack = () => {
-    setStep(1);
+    setStep(step - 1);
     setError("");
   };
 
@@ -81,7 +139,7 @@ export default function NewRidePage() {
     e.preventDefault();
     setError("");
 
-    if (!validateStep2()) return;
+    if (!validateStep3()) return;
 
     setIsSubmitting(true);
 
@@ -102,6 +160,8 @@ export default function NewRidePage() {
           pricePerSeat: formData.pricePerSeat,
           seatsTotal: formData.seatsTotal,
           notes: formData.notes || null,
+          vehicleId: selectedVehicleId,
+          ...preferences,
         }),
       });
 
@@ -180,22 +240,29 @@ export default function NewRidePage() {
                   </svg>
                 ) : "1"}
               </div>
-              <div className={`w-24 h-1 transition-colors ${step >= 2 ? "bg-purple-600" : "bg-gray-200"}`}></div>
+              <div className={`w-16 md:w-24 h-1 transition-colors ${step >= 2 ? "bg-purple-600" : "bg-gray-200"}`}></div>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
                 step >= 2 ? "bg-purple-600 text-white" : "bg-gray-200 text-gray-500"
               }`}>
-                2
+                {step > 2 ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : "2"}
+              </div>
+              <div className={`w-16 md:w-24 h-1 transition-colors ${step >= 3 ? "bg-purple-600" : "bg-gray-200"}`}></div>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
+                step >= 3 ? "bg-purple-600 text-white" : "bg-gray-200 text-gray-500"
+              }`}>
+                3
               </div>
             </div>
           </div>
           <div className="flex justify-center mt-2">
-            <div className="flex gap-16 text-sm">
-              <span className={step === 1 ? "text-purple-600 font-medium" : "text-gray-500"}>
-                Route
-              </span>
-              <span className={step === 2 ? "text-purple-600 font-medium" : "text-gray-500"}>
-                Details
-              </span>
+            <div className="flex gap-8 md:gap-12 text-sm">
+              <span className={step === 1 ? "text-purple-600 font-medium" : "text-gray-500"}>Route</span>
+              <span className={step === 2 ? "text-purple-600 font-medium" : "text-gray-500"}>Vehicle</span>
+              <span className={step === 3 ? "text-purple-600 font-medium" : "text-gray-500"}>Details</span>
             </div>
           </div>
         </div>
@@ -235,16 +302,176 @@ export default function NewRidePage() {
           </div>
         )}
 
-        {/* Step 2: Details */}
+        {/* Step 2: Vehicle & Preferences */}
         {step === 2 && (
+          <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 animate-fade-in">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Select Your Vehicle</h2>
+            <p className="text-gray-600 mb-6">Choose the vehicle you'll be driving for this trip.</p>
+
+            {loadingVehicles ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-600 border-t-transparent"></div>
+              </div>
+            ) : vehicles.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No vehicles yet</h3>
+                <p className="text-gray-600 mb-4">You need to add a vehicle before offering a ride.</p>
+                <Link
+                  href="/vehicles"
+                  className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
+                >
+                  Add a Vehicle
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-3 mb-8">
+                  {vehicles.map((vehicle) => (
+                    <button
+                      key={vehicle.id}
+                      type="button"
+                      onClick={() => setSelectedVehicleId(vehicle.id)}
+                      className={`w-full p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                        selectedVehicleId === vehicle.id
+                          ? "border-purple-500 bg-purple-50"
+                          : "border-gray-200 hover:border-purple-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                          selectedVehicleId === vehicle.id ? "bg-purple-100" : "bg-gray-100"
+                        }`}>
+                          <svg className={`w-6 h-6 ${selectedVehicleId === vehicle.id ? "text-purple-600" : "text-gray-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900">
+                              {vehicle.year} {vehicle.make} {vehicle.model}
+                            </span>
+                            {vehicle.isDefault && (
+                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Default</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
+                            <span>{vehicle.color}</span>
+                            <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-xs">{vehicle.licensePlate}</span>
+                          </div>
+                        </div>
+                        {selectedVehicleId === vehicle.id && (
+                          <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="text-center mb-8">
+                  <Link href="/vehicles" className="text-purple-600 hover:text-purple-700 font-medium text-sm cursor-pointer">
+                    + Add another vehicle
+                  </Link>
+                </div>
+
+                {/* Ride Preferences */}
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Ride Preferences</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Luggage Space</label>
+                    <select
+                      value={preferences.luggageSpace}
+                      onChange={(e) => setPreferences({ ...preferences, luggageSpace: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent cursor-pointer"
+                    >
+                      <option value="none">No luggage space</option>
+                      <option value="small">Small (backpack only)</option>
+                      <option value="medium">Medium (carry-on)</option>
+                      <option value="large">Large (suitcases welcome)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">Allow on this ride</label>
+                    <div className="flex flex-wrap gap-3">
+                      <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
+                        preferences.petsAllowed ? "border-purple-500 bg-purple-50" : "border-gray-200"
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={preferences.petsAllowed}
+                          onChange={(e) => setPreferences({ ...preferences, petsAllowed: e.target.checked })}
+                          className="sr-only"
+                        />
+                        <span>🐾</span>
+                        <span className="text-sm font-medium">Pets</span>
+                      </label>
+                      <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
+                        preferences.smokingAllowed ? "border-purple-500 bg-purple-50" : "border-gray-200"
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={preferences.smokingAllowed}
+                          onChange={(e) => setPreferences({ ...preferences, smokingAllowed: e.target.checked })}
+                          className="sr-only"
+                        />
+                        <span>🚬</span>
+                        <span className="text-sm font-medium">Smoking</span>
+                      </label>
+                      <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-all ${
+                        preferences.musicAllowed ? "border-purple-500 bg-purple-50" : "border-gray-200"
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={preferences.musicAllowed}
+                          onChange={(e) => setPreferences({ ...preferences, musicAllowed: e.target.checked })}
+                          className="sr-only"
+                        />
+                        <span>🎵</span>
+                        <span className="text-sm font-medium">Music</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={!selectedVehicleId}
+                className="flex-1 px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Details */}
+        {step === 3 && (
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 animate-fade-in">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Trip Details</h2>
             <p className="text-gray-600 mb-6">Set the date, time, and price for your ride.</p>
 
-            {/* Route Summary */}
+            {/* Route & Vehicle Summary */}
             <div className="bg-purple-50 rounded-xl p-4 mb-6 border border-purple-100">
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col items-center">
+              <div className="flex items-start gap-4">
+                <div className="flex flex-col items-center pt-1">
                   <div className="w-3 h-3 rounded-full bg-purple-600"></div>
                   <div className="w-0.5 h-8 bg-purple-300"></div>
                   <div className="w-3 h-3 rounded-full bg-purple-400"></div>
@@ -261,11 +488,32 @@ export default function NewRidePage() {
                 </div>
                 <button
                   type="button"
-                  onClick={handleBack}
+                  onClick={() => setStep(1)}
                   className="text-purple-600 hover:text-purple-700 text-sm font-medium cursor-pointer"
                 >
                   Edit
                 </button>
+              </div>
+              <div className="border-t border-purple-200 mt-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span className="text-sm text-gray-700">
+                      {vehicles.find(v => v.id === selectedVehicleId)?.year}{" "}
+                      {vehicles.find(v => v.id === selectedVehicleId)?.make}{" "}
+                      {vehicles.find(v => v.id === selectedVehicleId)?.model}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="text-purple-600 hover:text-purple-700 text-sm font-medium cursor-pointer"
+                  >
+                    Change
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -351,7 +599,7 @@ export default function NewRidePage() {
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Meeting point details, luggage space, music preferences..."
+                  placeholder="Meeting point details, stops along the way..."
                   rows={3}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none transition-all"
                 />

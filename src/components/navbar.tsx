@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
+import NotificationBell from "./notification-bell";
 
 export function Navbar() {
   const { data: session, status } = useSession();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -25,7 +28,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-8">
             <Link
               href="/rides"
-              className="text-gray-600 hover:text-purple-600 transition-colors font-medium"
+              className="text-gray-600 hover:text-purple-600 transition-colors font-medium cursor-pointer"
             >
               Find Rides
             </Link>
@@ -33,13 +36,13 @@ export function Navbar() {
               <>
                 <Link
                   href="/rides/new"
-                  className="text-gray-600 hover:text-purple-600 transition-colors font-medium"
+                  className="text-gray-600 hover:text-purple-600 transition-colors font-medium cursor-pointer"
                 >
                   Offer a Ride
                 </Link>
                 <Link
                   href="/dashboard"
-                  className="text-gray-600 hover:text-purple-600 transition-colors font-medium"
+                  className="text-gray-600 hover:text-purple-600 transition-colors font-medium cursor-pointer"
                 >
                   Dashboard
                 </Link>
@@ -49,8 +52,9 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center gap-4">
             {status === "authenticated" ? (
-              <div className="flex items-center gap-4">
-                <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <div className="flex items-center gap-3">
+                <NotificationBell />
+                <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer">
                   {session.user?.image ? (
                     <img 
                       src={session.user.image} 
@@ -70,7 +74,7 @@ export function Navbar() {
                 </Link>
                 <button
                   onClick={() => signOut({ callbackUrl: "/" })}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
                 >
                   Sign Out
                 </button>
@@ -79,13 +83,13 @@ export function Navbar() {
               <div className="flex items-center gap-3">
                 <Link
                   href="/auth/signin"
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/auth/signin"
-                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors cursor-pointer"
                 >
                   Get Started
                 </Link>
@@ -94,33 +98,36 @@ export function Navbar() {
           </div>
 
           {/* Mobile menu button */}
-          <button
-            className="md:hidden text-gray-600 p-2"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="md:hidden flex items-center gap-2">
+            {status === "authenticated" && <NotificationBell />}
+            <button
+              className="text-gray-600 p-2 cursor-pointer"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isMenuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
-          </button>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {isMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
@@ -129,7 +136,7 @@ export function Navbar() {
             <div className="flex flex-col gap-3">
               <Link
                 href="/rides"
-                className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Find Rides
@@ -138,28 +145,35 @@ export function Navbar() {
                 <>
                   <Link
                     href="/rides/new"
-                    className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                    className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Offer a Ride
                   </Link>
                   <Link
                     href="/dashboard"
-                    className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                    className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
+                    href="/vehicles"
+                    className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    My Vehicles
+                  </Link>
+                  <Link
                     href="/profile"
-                    className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                    className="px-3 py-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     My Profile
                   </Link>
                   <button
                     onClick={() => signOut({ callbackUrl: "/" })}
-                    className="px-3 py-2 text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="px-3 py-2 text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                   >
                     Sign Out
                   </button>
@@ -168,7 +182,7 @@ export function Navbar() {
               {status !== "authenticated" && (
                 <Link
                   href="/auth/signin"
-                  className="px-3 py-2 text-purple-600 font-medium hover:bg-purple-50 rounded-lg transition-colors"
+                  className="px-3 py-2 text-purple-600 font-medium hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign In
@@ -178,6 +192,23 @@ export function Navbar() {
           </div>
         )}
       </div>
+      
+      {/* Onboarding Banner */}
+      {status === "authenticated" && session?.user && !session.user.university && pathname !== "/onboarding" && (
+        <div className="bg-purple-600 text-white px-4 py-2">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <p className="text-sm">
+              👋 Complete your profile to start using StudentRide
+            </p>
+            <Link
+              href="/onboarding"
+              className="text-sm font-medium bg-white text-purple-600 px-3 py-1 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+            >
+              Complete Profile
+            </Link>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

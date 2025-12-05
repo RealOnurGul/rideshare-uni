@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyBookingRequest } from "@/lib/notifications";
 
 // POST /api/rides/[id]/book - Create a booking for the current user
 export async function POST(
@@ -27,6 +28,21 @@ export async function POST(
 
     if (!ride) {
       return NextResponse.json({ error: "Ride not found" }, { status: 404 });
+    }
+
+    // Check ride status
+    if (ride.status === "cancelled") {
+      return NextResponse.json(
+        { error: "This ride has been cancelled" },
+        { status: 400 }
+      );
+    }
+
+    if (ride.status === "completed") {
+      return NextResponse.json(
+        { error: "This ride has already been completed" },
+        { status: 400 }
+      );
     }
 
     // Check if user is the driver
@@ -64,6 +80,12 @@ export async function POST(
       );
     }
 
+    // Get current user's name for notification
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true },
+    });
+
     // Create the booking
     const booking = await prisma.booking.create({
       data: {
@@ -73,23 +95,23 @@ export async function POST(
       },
       include: {
         passenger: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            university: true,
-          },
+          select: { id: true, name: true, university: true },
         },
         ride: {
-          select: {
-            id: true,
-            origin: true,
-            destination: true,
-            dateTime: true,
-          },
+          select: { id: true, origin: true, destination: true, dateTime: true },
         },
       },
     });
+
+    // Notify the driver
+    await notifyBookingRequest(
+      ride.driverId,
+      currentUser?.name || "A passenger",
+      rideId,
+      booking.id,
+      ride.origin,
+      ride.destination
+    );
 
     return NextResponse.json(booking, { status: 201 });
   } catch (error) {
@@ -100,4 +122,3 @@ export async function POST(
     );
   }
 }
-
