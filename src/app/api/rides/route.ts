@@ -3,13 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/rides - List rides with optional filters
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const origin = searchParams.get("origin");
     const destination = searchParams.get("destination");
-    const date = searchParams.get("date");
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
     const university = searchParams.get("university");
 
     const where: Record<string, unknown> = {
@@ -33,15 +33,23 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    if (date) {
-      const startOfDay = new Date(date);
-      const endOfDay = new Date(date);
-      endOfDay.setDate(endOfDay.getDate() + 1);
-
-      where.dateTime = {
-        gte: startOfDay,
-        lt: endOfDay,
-      };
+    // Date range filtering
+    if (dateFrom || dateTo) {
+      const dateFilter: { gte?: Date; lte?: Date } = {};
+      
+      if (dateFrom) {
+        dateFilter.gte = new Date(dateFrom);
+      } else {
+        dateFilter.gte = new Date();
+      }
+      
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        dateFilter.lte = endDate;
+      }
+      
+      where.dateTime = dateFilter;
     }
 
     if (university) {
@@ -61,6 +69,7 @@ export async function GET(request: NextRequest) {
             name: true,
             email: true,
             university: true,
+            image: true,
           },
         },
         _count: {
@@ -88,7 +97,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/rides - Create a new ride
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -98,11 +106,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { origin, destination, dateTime, pricePerSeat, seatsTotal, notes } =
-      body;
+    const {
+      origin,
+      originLat,
+      originLng,
+      destination,
+      destinationLat,
+      destinationLng,
+      dateTime,
+      pricePerSeat,
+      seatsTotal,
+      notes,
+    } = body;
 
-    // Validation
-    if (!origin || !destination || !dateTime || !pricePerSeat || !seatsTotal) {
+    if (!origin || !destination || !dateTime || pricePerSeat === undefined || !seatsTotal) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -135,7 +152,11 @@ export async function POST(request: NextRequest) {
       data: {
         driverId: session.user.id,
         origin,
+        originLat: originLat || null,
+        originLng: originLng || null,
         destination,
+        destinationLat: destinationLat || null,
+        destinationLng: destinationLng || null,
         dateTime: rideDate,
         pricePerSeat: parseFloat(pricePerSeat),
         seatsTotal: parseInt(seatsTotal),
@@ -149,6 +170,7 @@ export async function POST(request: NextRequest) {
             name: true,
             email: true,
             university: true,
+            image: true,
           },
         },
       },
@@ -163,4 +185,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

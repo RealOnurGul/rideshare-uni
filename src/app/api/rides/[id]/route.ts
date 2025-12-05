@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/rides/[id] - Get ride details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,6 +17,7 @@ export async function GET(
             name: true,
             email: true,
             university: true,
+            image: true,
           },
         },
         bookings: {
@@ -28,6 +28,7 @@ export async function GET(
                 name: true,
                 email: true,
                 university: true,
+                image: true,
               },
             },
           },
@@ -51,4 +52,3 @@ export async function GET(
     );
   }
 }
-

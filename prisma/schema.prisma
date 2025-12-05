@@ -61,7 +61,11 @@ model Ride {
   id             String   @id @default(cuid())
   driverId       String
   origin         String
+  originLat      Float?
+  originLng      Float?
   destination    String
+  destinationLat Float?
+  destinationLng Float?
   dateTime       DateTime
   pricePerSeat   Float
   seatsTotal     Int
@@ -77,7 +81,7 @@ model Booking {
   id          String   @id @default(cuid())
   rideId      String
   passengerId String
-  status      String   @default("pending") // "pending" | "accepted" | "declined"
+  status      String   @default("pending")
   createdAt   DateTime @default(now())
 
   ride      Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
@@ -85,4 +89,3 @@ model Booking {
 
   @@unique([rideId, passengerId])
 }
-

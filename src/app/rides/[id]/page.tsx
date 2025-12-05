@@ -3,12 +3,14 @@
 import { useState, useEffect, use } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import RideDetailMap from "@/components/ride-detail-map";
 
 interface Passenger {
   id: string;
   name: string | null;
   email: string | null;
   university: string | null;
+  image: string | null;
 }
 
 interface Booking {
@@ -23,12 +25,17 @@ interface Driver {
   name: string | null;
   email: string | null;
   university: string | null;
+  image: string | null;
 }
 
 interface Ride {
   id: string;
   origin: string;
+  originLat: number | null;
+  originLng: number | null;
   destination: string;
+  destinationLat: number | null;
+  destinationLng: number | null;
   dateTime: string;
   pricePerSeat: number;
   seatsTotal: number;
@@ -88,7 +95,7 @@ export default function RideDetailPage({
         throw new Error(data.error || "Failed to book ride");
       }
 
-      setBookingMessage("Seat requested successfully! Waiting for driver approval.");
+      setBookingMessage("Seat requested successfully!");
       fetchRide();
     } catch (error) {
       setBookingMessage(
@@ -180,6 +187,8 @@ export default function RideDetailPage({
     );
   }
 
+  const hasMapCoords = ride.originLat && ride.originLng && ride.destinationLat && ride.destinationLng;
+
   return (
     <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -193,287 +202,292 @@ export default function RideDetailPage({
           Back to rides
         </Link>
 
-        {/* Main Ride Card */}
-        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200 mb-6">
-          {/* Route & Price Header */}
-          <div className="flex flex-col md:flex-row justify-between gap-6 mb-8">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl md:text-3xl font-bold text-gray-900">{ride.origin}</span>
-                <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-                <span className="text-2xl md:text-3xl font-bold text-gray-900">{ride.destination}</span>
-              </div>
-              <div className="flex items-center gap-4 text-gray-600">
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  {formatDate(ride.dateTime)}
-                </span>
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {formatTime(ride.dateTime)}
-                </span>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-4xl font-bold text-gray-900">${ride.pricePerSeat}</div>
-              <div className="text-gray-500">per seat</div>
-            </div>
-          </div>
-
-          {/* Info Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="text-sm text-gray-500 mb-1">Available Seats</div>
-              <div className="text-2xl font-bold text-gray-900">{ride.seatsAvailable}</div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="text-sm text-gray-500 mb-1">Total Seats</div>
-              <div className="text-2xl font-bold text-gray-900">{ride.seatsTotal}</div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-4 col-span-2">
-              <div className="text-sm text-gray-500 mb-1">Driver</div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                  <span className="text-purple-600 font-semibold">
-                    {ride.driver.name?.[0] || ride.driver.email?.[0]?.toUpperCase() || "?"}
-                  </span>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Route Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-start justify-between mb-6">
                 <div>
-                  <div className="font-semibold text-gray-900">
-                    {ride.driver.name || ride.driver.email?.split("@")[0]}
-                  </div>
-                  <div className="text-sm text-gray-500">{ride.driver.university}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          {ride.notes && (
-            <div className="bg-purple-50 rounded-xl p-4 mb-8">
-              <div className="text-sm font-medium text-purple-800 mb-1">Notes from driver</div>
-              <p className="text-purple-900">{ride.notes}</p>
-            </div>
-          )}
-
-          {/* Booking Section (for non-drivers) */}
-          {!isDriver && (
-            <div className="border-t border-gray-200 pt-6">
-              {userBooking ? (
-                <div
-                  className={`p-4 rounded-xl ${
-                    userBooking.status === "accepted"
-                      ? "bg-green-50 border border-green-200"
-                      : userBooking.status === "declined"
-                      ? "bg-red-50 border border-red-200"
-                      : "bg-yellow-50 border border-yellow-200"
-                  }`}
-                >
-                  {userBooking.status === "accepted" && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-green-800">Booking Confirmed!</div>
-                        <p className="text-green-700 text-sm mt-1">
-                          Your seat has been confirmed. Contact the driver at{" "}
-                          <span className="font-semibold">{ride.driver.email}</span> to coordinate pickup details.
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-purple-600"></div>
+                      <span className="text-xl font-bold text-gray-900">{ride.origin}</span>
                     </div>
-                  )}
-                  {userBooking.status === "declined" && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-red-800">Request Declined</div>
-                        <p className="text-red-700 text-sm mt-1">
-                          Unfortunately, your booking request was declined. Try finding another ride.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {userBooking.status === "pending" && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-yellow-800">Pending Approval</div>
-                        <p className="text-yellow-700 text-sm mt-1">
-                          Your request has been sent. The driver will review and respond soon.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={handleBookRide}
-                    disabled={isBooking || ride.seatsAvailable <= 0 || !session}
-                    className="w-full py-4 px-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
-                  >
-                    {isBooking ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Requesting...
-                      </span>
-                    ) : ride.seatsAvailable <= 0 ? (
-                      "No Seats Available"
-                    ) : !session ? (
-                      "Sign in to Request a Seat"
-                    ) : (
-                      "Request a Seat"
-                    )}
-                  </button>
-                  {bookingMessage && (
-                    <p
-                      className={`mt-4 text-center text-sm ${
-                        bookingMessage.includes("successfully")
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {bookingMessage}
-                    </p>
-                  )}
-                  {!session && (
-                    <p className="mt-4 text-center text-sm text-gray-500">
-                      <Link href="/auth/signin" className="text-purple-600 hover:text-purple-700 font-medium">
-                        Sign in
-                      </Link>
-                      {" "}to request a seat on this ride.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Driver Controls */}
-        {isDriver && (
-          <div className="space-y-6">
-            {/* Pending Requests */}
-            {pendingBookings && pendingBookings.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-sm font-bold">
-                    {pendingBookings.length}
-                  </span>
-                  Pending Requests
-                </h2>
-                <div className="space-y-3">
-                  {pendingBookings.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-xl"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                          <span className="text-purple-600 font-semibold">
-                            {booking.passenger.name?.[0] || booking.passenger.email?.[0]?.toUpperCase() || "?"}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            {booking.passenger.name || booking.passenger.email?.split("@")[0]}
-                          </div>
-                          <div className="text-sm text-gray-500">{booking.passenger.university}</div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleUpdateBooking(booking.id, "accepted")}
-                          disabled={updatingBookingId === booking.id}
-                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => handleUpdateBooking(booking.id, "declined")}
-                          disabled={updatingBookingId === booking.id}
-                          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Accepted Passengers */}
-            {acceptedBookings && acceptedBookings.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-sm font-bold">
-                    {acceptedBookings.length}
-                  </span>
-                  Confirmed Passengers
-                </h2>
-                <div className="space-y-3">
-                  {acceptedBookings.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                        <span className="text-purple-600 font-semibold">
-                          {booking.passenger.name?.[0] || booking.passenger.email?.[0]?.toUpperCase() || "?"}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900">
-                          {booking.passenger.name || booking.passenger.email?.split("@")[0]}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {booking.passenger.email} • {booking.passenger.university}
-                        </div>
-                      </div>
-                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                        Confirmed
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(!pendingBookings || pendingBookings.length === 0) &&
-              (!acceptedBookings || acceptedBookings.length === 0) && (
-                <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                      <span className="text-xl font-bold text-gray-900">{ride.destination}</span>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No booking requests yet</h3>
-                  <p className="text-gray-500">Share your ride link to get passengers!</p>
+                  <div className="flex items-center gap-4 text-gray-600">
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {formatDate(ride.dateTime)}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formatTime(ride.dateTime)}
+                    </span>
+                  </div>
                 </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-purple-600">${ride.pricePerSeat}</div>
+                  <div className="text-gray-500 text-sm">per seat</div>
+                </div>
+              </div>
+
+              {/* Map */}
+              {hasMapCoords && (
+                <RideDetailMap
+                  originLat={ride.originLat!}
+                  originLng={ride.originLng!}
+                  originAddress={ride.origin}
+                  destinationLat={ride.destinationLat!}
+                  destinationLng={ride.destinationLng!}
+                  destinationAddress={ride.destination}
+                />
               )}
+            </div>
+
+            {/* Notes */}
+            {ride.notes && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <h3 className="font-semibold text-gray-900 mb-2">Trip Notes</h3>
+                <p className="text-gray-600">{ride.notes}</p>
+              </div>
+            )}
+
+            {/* Driver Bookings Management */}
+            {isDriver && (
+              <div className="space-y-4">
+                {pendingBookings && pendingBookings.length > 0 && (
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-xs font-bold">
+                        {pendingBookings.length}
+                      </span>
+                      Pending Requests
+                    </h3>
+                    <div className="space-y-3">
+                      {pendingBookings.map((booking) => (
+                        <div
+                          key={booking.id}
+                          className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-100 rounded-xl"
+                        >
+                          <div className="flex items-center gap-3">
+                            {booking.passenger.image ? (
+                              <img src={booking.passenger.image} alt="" className="w-10 h-10 rounded-full" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                                <span className="text-purple-600 font-semibold">
+                                  {booking.passenger.name?.[0] || "?"}
+                                </span>
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {booking.passenger.name || booking.passenger.email?.split("@")[0]}
+                              </p>
+                              <p className="text-sm text-gray-500">{booking.passenger.university}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleUpdateBooking(booking.id, "accepted")}
+                              disabled={updatingBookingId === booking.id}
+                              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleUpdateBooking(booking.id, "declined")}
+                              disabled={updatingBookingId === booking.id}
+                              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {acceptedBookings && acceptedBookings.length > 0 && (
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xs font-bold">
+                        {acceptedBookings.length}
+                      </span>
+                      Confirmed Passengers
+                    </h3>
+                    <div className="space-y-3">
+                      {acceptedBookings.map((booking) => (
+                        <div
+                          key={booking.id}
+                          className="flex items-center gap-3 p-4 bg-green-50 border border-green-100 rounded-xl"
+                        >
+                          {booking.passenger.image ? (
+                            <img src={booking.passenger.image} alt="" className="w-10 h-10 rounded-full" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                              <span className="text-purple-600 font-semibold">
+                                {booking.passenger.name?.[0] || "?"}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              {booking.passenger.name || booking.passenger.email?.split("@")[0]}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {booking.passenger.email} • {booking.passenger.university}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Driver Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-4">Driver</h3>
+              <div className="flex items-center gap-4">
+                {ride.driver.image ? (
+                  <img src={ride.driver.image} alt="" className="w-14 h-14 rounded-full" />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center">
+                    <span className="text-purple-600 font-bold text-xl">
+                      {ride.driver.name?.[0] || "?"}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    {ride.driver.name || ride.driver.email?.split("@")[0]}
+                  </p>
+                  <p className="text-sm text-gray-500">{ride.driver.university}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Seats Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-4">Availability</h3>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-gray-600">Available Seats</span>
+                <span className="text-2xl font-bold text-purple-600">{ride.seatsAvailable}</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2">
+                <div
+                  className="bg-purple-600 h-2 rounded-full transition-all"
+                  style={{
+                    width: `${((ride.seatsTotal - ride.seatsAvailable) / ride.seatsTotal) * 100}%`,
+                  }}
+                ></div>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                {ride.seatsTotal - ride.seatsAvailable} of {ride.seatsTotal} seats booked
+              </p>
+            </div>
+
+            {/* Booking Card */}
+            {!isDriver && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                {userBooking ? (
+                  <div>
+                    {userBooking.status === "accepted" && (
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <h3 className="font-semibold text-green-800 mb-2">Booking Confirmed!</h3>
+                        <p className="text-sm text-gray-600">
+                          Contact the driver at <span className="font-medium">{ride.driver.email}</span>
+                        </p>
+                      </div>
+                    )}
+                    {userBooking.status === "pending" && (
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <h3 className="font-semibold text-yellow-800 mb-2">Pending Approval</h3>
+                        <p className="text-sm text-gray-600">Waiting for driver confirmation</p>
+                      </div>
+                    )}
+                    {userBooking.status === "declined" && (
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                        <h3 className="font-semibold text-red-800 mb-2">Request Declined</h3>
+                        <p className="text-sm text-gray-600">Try finding another ride</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <button
+                      onClick={handleBookRide}
+                      disabled={isBooking || ride.seatsAvailable <= 0 || !session}
+                      className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-press"
+                    >
+                      {isBooking ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Requesting...
+                        </span>
+                      ) : ride.seatsAvailable <= 0 ? (
+                        "No Seats Available"
+                      ) : !session ? (
+                        "Sign in to Book"
+                      ) : (
+                        "Request a Seat"
+                      )}
+                    </button>
+                    {bookingMessage && (
+                      <p className={`mt-3 text-sm text-center ${
+                        bookingMessage.includes("success") ? "text-green-600" : "text-red-600"
+                      }`}>
+                        {bookingMessage}
+                      </p>
+                    )}
+                    {!session && (
+                      <p className="mt-3 text-sm text-center text-gray-500">
+                        <Link href="/auth/signin" className="text-purple-600 hover:text-purple-700 font-medium">
+                          Sign in
+                        </Link>{" "}to request a seat
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
