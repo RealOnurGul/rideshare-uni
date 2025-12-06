@@ -4,6 +4,47 @@ import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 
+interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewer: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  };
+}
+
+interface ReviewGiven {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewee: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  };
+}
+
+interface UserProfile {
+  id: string;
+  name: string | null;
+  image: string | null;
+  university: string | null;
+  bio: string | null;
+  memberSince: string;
+  stats: {
+    ridesAsDriver: number;
+    ridesAsPassenger: number;
+    totalReviews: number;
+    averageRating: number | null;
+  };
+  reviews: Review[];
+  reviewsGiven?: ReviewGiven[];
+}
+
 interface UserStats {
   ridesOffered: number;
   ridesBooked: number;
@@ -13,6 +54,7 @@ interface UserStats {
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats>({
     ridesOffered: 0,
     ridesBooked: 0,
@@ -22,10 +64,17 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchProfileData = async () => {
       if (!session?.user?.id) return;
 
       try {
+        // Fetch user profile data (includes reviews and ratings)
+        const profileRes = await fetch(`/api/users/${session.user.id}`);
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setUserProfile(profileData);
+        }
+
         // Fetch rides to calculate stats
         const ridesRes = await fetch("/api/rides?history=true&status=all");
         const data = await ridesRes.json();
@@ -66,16 +115,41 @@ export default function ProfilePage() {
 
         setStats({ ridesOffered, ridesBooked, totalEarnings, totalSpent });
       } catch (error) {
-        console.error("Error fetching stats:", error);
+        console.error("Error fetching profile data:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
     if (session) {
-      fetchStats();
+      fetchProfileData();
     }
   }, [session]);
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-CA", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <svg
+            key={star}
+            className={`w-4 h-4 ${star <= rating ? "text-yellow-400" : "text-gray-300"}`}
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+      </div>
+    );
+  };
 
   if (status === "loading") {
     return (
@@ -153,6 +227,30 @@ export default function ProfilePage() {
                   </svg>
                   University not verified
                 </span>
+              )}
+
+              {/* Average Rating */}
+              {userProfile?.stats.averageRating !== null && userProfile?.stats.averageRating !== undefined && (
+                <div className="flex items-center justify-center md:justify-start gap-2 mt-3">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <svg
+                        key={star}
+                        className={`w-5 h-5 ${star <= Math.round(userProfile.stats.averageRating!) ? "text-yellow-400" : "text-gray-300"}`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <span className="font-semibold text-gray-900">
+                    {userProfile.stats.averageRating.toFixed(1)}
+                  </span>
+                  <span className="text-gray-500">
+                    ({userProfile.stats.totalReviews} review{userProfile.stats.totalReviews !== 1 ? "s" : ""})
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -315,6 +413,127 @@ export default function ProfilePage() {
             </Link>
           </div>
         </div>
+
+        {/* Reviews Received Section */}
+        {userProfile && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Reviews Received</h2>
+
+            {userProfile.reviews.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                </div>
+                <p className="text-gray-500">No reviews yet</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Reviews will appear after completed rides
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {userProfile.reviews.map((review) => (
+                  <div key={review.id} className="p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <Link href={`/users/${review.reviewer.id}`} className="flex-shrink-0 cursor-pointer">
+                        {review.reviewer.image ? (
+                          <img
+                            src={review.reviewer.image}
+                            alt=""
+                            className="w-10 h-10 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <span className="text-purple-600 font-medium">
+                              {review.reviewer.name?.[0] || "?"}
+                            </span>
+                          </div>
+                        )}
+                      </Link>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <Link href={`/users/${review.reviewer.id}`} className="font-medium text-gray-900 hover:text-purple-600 cursor-pointer">
+                            {review.reviewer.name || "Anonymous"}
+                          </Link>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(review.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-1">{renderStars(review.rating)}</div>
+                        {review.comment && (
+                          <p className="text-gray-600 mt-2">{review.comment}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reviews Given Section */}
+        {userProfile && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Reviews Given</h2>
+
+            {!userProfile.reviewsGiven || userProfile.reviewsGiven.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                </div>
+                <p className="text-gray-500">No reviews given yet</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Reviews you write will appear here
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {userProfile.reviewsGiven.map((review) => (
+                  <div key={review.id} className="p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <Link href={`/users/${review.reviewee.id}`} className="flex-shrink-0 cursor-pointer">
+                        {review.reviewee.image ? (
+                          <img
+                            src={review.reviewee.image}
+                            alt=""
+                            className="w-10 h-10 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <span className="text-purple-600 font-medium">
+                              {review.reviewee.name?.[0] || "?"}
+                            </span>
+                          </div>
+                        )}
+                      </Link>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500">Reviewed</span>
+                            <Link href={`/users/${review.reviewee.id}`} className="font-medium text-gray-900 hover:text-purple-600 cursor-pointer">
+                              {review.reviewee.name || "Anonymous"}
+                            </Link>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(review.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-1">{renderStars(review.rating)}</div>
+                        {review.comment && (
+                          <p className="text-gray-600 mt-2">{review.comment}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Danger Zone */}
         <div className="bg-white rounded-2xl shadow-sm border border-red-200 overflow-hidden">

@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RideDetailMap from "@/components/ride-detail-map";
+import { MockPayment } from "@/components/mock-payment";
+import { CancellationPolicy } from "@/components/cancellation-policy";
 
 interface Passenger {
   id: string;
@@ -18,6 +20,8 @@ interface Booking {
   id: string;
   status: string;
   createdAt: string;
+  paymentStatus: string | null;
+  paymentAmount: number | null;
   passenger: Passenger;
 }
 
@@ -76,6 +80,8 @@ export default function RideDetailPage({
   const [bookingMessage, setBookingMessage] = useState("");
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [showCancellationPolicy, setShowCancellationPolicy] = useState(false);
 
   const fetchRide = async () => {
     try {
@@ -100,12 +106,30 @@ export default function RideDetailPage({
       return;
     }
 
+    // Check if user has verified university
+    if (!session.user?.university) {
+      setBookingMessage("Please verify your university email first. Go to your profile to complete verification.");
+      return;
+    }
+
+    // Show cancellation policy first
+    setShowCancellationPolicy(true);
+  };
+
+  const handleAcceptPolicy = () => {
+    setShowCancellationPolicy(false);
+    setShowPayment(true);
+  };
+
+  const handlePaymentSuccess = async () => {
     setIsBooking(true);
     setBookingMessage("");
 
     try {
       const res = await fetch(`/api/rides/${id}/book`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentConfirmed: true }),
       });
       const data = await res.json();
 
@@ -113,7 +137,8 @@ export default function RideDetailPage({
         throw new Error(data.error || "Failed to book ride");
       }
 
-      setBookingMessage("Seat requested successfully!");
+      setShowPayment(false);
+      setBookingMessage("Seat requested successfully! Payment held until ride completion.");
       fetchRide();
     } catch (error) {
       setBookingMessage(
@@ -485,7 +510,11 @@ export default function RideDetailPage({
                     </h3>
                     <div className="space-y-3">
                       {acceptedBookings.map((booking) => (
-                        <div key={booking.id} className="flex items-center gap-3 p-4 bg-green-50 border border-green-100 rounded-xl">
+                        <Link 
+                          key={booking.id} 
+                          href={`/users/${booking.passenger.id}`}
+                          className="flex items-center gap-3 p-4 bg-green-50 border border-green-100 rounded-xl hover:bg-green-100 transition-colors cursor-pointer"
+                        >
                           {booking.passenger.image ? (
                             <img src={booking.passenger.image} alt="" className="w-10 h-10 rounded-full" />
                           ) : (
@@ -496,14 +525,14 @@ export default function RideDetailPage({
                             </div>
                           )}
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-gray-900 hover:text-purple-600 transition-colors">
                               {booking.passenger.name || "Passenger"}
                             </p>
                             <p className="text-sm text-gray-500">
                               {booking.passenger.university}
                             </p>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>
@@ -529,7 +558,7 @@ export default function RideDetailPage({
             {/* Driver Card */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
               <h3 className="font-semibold text-gray-900 mb-4">Driver</h3>
-              <div className="flex items-center gap-4">
+              <Link href={`/users/${ride.driver.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity cursor-pointer">
                 {ride.driver.image ? (
                   <img src={ride.driver.image} alt="" className="w-14 h-14 rounded-full" />
                 ) : (
@@ -540,12 +569,12 @@ export default function RideDetailPage({
                   </div>
                 )}
                 <div>
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-gray-900 hover:text-purple-600 transition-colors">
                     {ride.driver.name || "Driver"}
                   </p>
                   <p className="text-sm text-gray-500">{ride.driver.university}</p>
                 </div>
-              </div>
+              </Link>
             </div>
 
             {/* Seats Card */}
@@ -571,7 +600,20 @@ export default function RideDetailPage({
             {/* Booking Card */}
             {!isDriver && ride.status === "upcoming" && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                {userBooking ? (
+                {showCancellationPolicy ? (
+                  <CancellationPolicy
+                    rideDateTime={ride.dateTime}
+                    onAccept={handleAcceptPolicy}
+                    onCancel={() => setShowCancellationPolicy(false)}
+                  />
+                ) : showPayment ? (
+                  <MockPayment
+                    amount={ride.pricePerSeat}
+                    onSuccess={handlePaymentSuccess}
+                    onCancel={() => setShowPayment(false)}
+                    isProcessing={isBooking}
+                  />
+                ) : userBooking ? (
                   <div>
                     {userBooking.status === "accepted" && (
                       <div className="text-center">
@@ -581,9 +623,14 @@ export default function RideDetailPage({
                           </svg>
                         </div>
                         <h3 className="font-semibold text-green-800 mb-2">Booking Confirmed!</h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                          You're all set! The driver will contact you before the ride.
+                        <p className="text-sm text-gray-600 mb-2">
+                          You&apos;re all set! The driver will contact you before the ride.
                         </p>
+                        {userBooking.paymentStatus === "held" && (
+                          <p className="text-xs text-purple-600 bg-purple-50 px-3 py-1 rounded-lg inline-block mb-4">
+                            💳 ${userBooking.paymentAmount?.toFixed(2)} held until ride completion
+                          </p>
+                        )}
                         <button
                           onClick={() => handleCancelBooking(userBooking.id)}
                           disabled={actionLoading}
@@ -601,7 +648,12 @@ export default function RideDetailPage({
                           </svg>
                         </div>
                         <h3 className="font-semibold text-yellow-800 mb-2">Pending Approval</h3>
-                        <p className="text-sm text-gray-600 mb-4">Waiting for driver confirmation</p>
+                        <p className="text-sm text-gray-600 mb-2">Waiting for driver confirmation</p>
+                        {userBooking.paymentStatus === "held" && (
+                          <p className="text-xs text-purple-600 bg-purple-50 px-3 py-1 rounded-lg inline-block mb-4">
+                            💳 ${userBooking.paymentAmount?.toFixed(2)} held securely
+                          </p>
+                        )}
                         <button
                           onClick={() => handleCancelBooking(userBooking.id)}
                           disabled={actionLoading}
@@ -619,7 +671,8 @@ export default function RideDetailPage({
                           </svg>
                         </div>
                         <h3 className="font-semibold text-red-800 mb-2">Request Declined</h3>
-                        <p className="text-sm text-gray-600">Try finding another ride</p>
+                        <p className="text-sm text-gray-600 mb-1">Try finding another ride</p>
+                        <p className="text-xs text-gray-500">Your payment has been refunded</p>
                       </div>
                     )}
                     {userBooking.status === "cancelled" && (
@@ -636,6 +689,10 @@ export default function RideDetailPage({
                   </div>
                 ) : (
                   <div>
+                    <div className="text-center mb-4">
+                      <div className="text-3xl font-bold text-purple-600">${ride.pricePerSeat}</div>
+                      <div className="text-sm text-gray-500">per seat</div>
+                    </div>
                     <button
                       onClick={handleBookRide}
                       disabled={isBooking || ride.seatsAvailable <= 0 || !session}
@@ -647,16 +704,21 @@ export default function RideDetailPage({
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                           </svg>
-                          Requesting...
+                          Processing...
                         </span>
                       ) : ride.seatsAvailable <= 0 ? (
                         "No Seats Available"
                       ) : !session ? (
                         "Sign in to Book"
+                      ) : !session.user?.university ? (
+                        "Verify University First"
                       ) : (
-                        "Request a Seat"
+                        "Book & Pay Now"
                       )}
                     </button>
+                    <p className="mt-3 text-xs text-center text-gray-500">
+                      Payment held until ride completion
+                    </p>
                     {bookingMessage && (
                       <p className={`mt-3 text-sm text-center ${
                         bookingMessage.includes("success") ? "text-green-600" : "text-red-600"
@@ -669,6 +731,13 @@ export default function RideDetailPage({
                         <Link href="/auth/signin" className="text-purple-600 hover:text-purple-700 font-medium cursor-pointer">
                           Sign in
                         </Link>{" "}to request a seat
+                      </p>
+                    )}
+                    {session && !session.user?.university && (
+                      <p className="mt-3 text-sm text-center text-gray-500">
+                        <Link href="/onboarding" className="text-purple-600 hover:text-purple-700 font-medium cursor-pointer">
+                          Verify your university
+                        </Link>{" "}to join rides
                       </p>
                     )}
                   </div>

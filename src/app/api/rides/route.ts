@@ -21,8 +21,12 @@ export async function GET(request: NextRequest) {
       where.status = status || "upcoming";
       where.seatsAvailable = { gt: 0 };
       where.dateTime = { gte: new Date() };
-    } else if (status && status !== "all") {
-      where.status = status;
+    } else {
+      // When including history, only filter by status if explicitly provided and not "all"
+      if (status && status !== "all") {
+        where.status = status;
+      }
+      // Otherwise, return all rides regardless of status
     }
 
     if (origin) {
@@ -85,6 +89,19 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if user has verified their university email
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { university: true },
+    });
+
+    if (!user?.university) {
+      return NextResponse.json(
+        { error: "Please verify your university email before offering a ride. Go to your profile to complete verification." },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

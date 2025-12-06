@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
+import { PendingConfirmationsBanner } from "@/components/pending-confirmations-banner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,6 +26,7 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-screen flex flex-col">
             <Navbar />
+            <PendingConfirmationsBanner />
             <main className="flex-1">{children}</main>
           </div>
         </Providers>

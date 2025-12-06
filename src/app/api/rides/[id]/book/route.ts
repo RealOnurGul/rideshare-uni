@@ -17,6 +17,8 @@ export async function POST(
     }
 
     const { id: rideId } = await params;
+    const body = await request.json().catch(() => ({}));
+    const { paymentConfirmed } = body;
 
     // Get the ride
     const ride = await prisma.ride.findUnique({
@@ -80,18 +82,41 @@ export async function POST(
       );
     }
 
-    // Get current user's name for notification
+    // Check if user has verified their university
     const currentUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true },
+      select: { name: true, university: true },
     });
 
-    // Create the booking
+    if (!currentUser?.university) {
+      return NextResponse.json(
+        { error: "Please verify your university email before joining a ride. Go to your profile to complete verification." },
+        { status: 403 }
+      );
+    }
+
+    // Require payment confirmation
+    if (!paymentConfirmed) {
+      return NextResponse.json(
+        { error: "Payment confirmation required" },
+        { status: 400 }
+      );
+    }
+
+    // Calculate confirmation deadline (24 hours after ride start)
+    const rideDate = new Date(ride.dateTime);
+    const confirmDeadline = new Date(rideDate.getTime() + 24 * 60 * 60 * 1000);
+
+    // Create the booking with payment info
     const booking = await prisma.booking.create({
       data: {
         rideId,
         passengerId: session.user.id,
         status: "pending",
+        paymentStatus: "held",
+        paymentAmount: ride.pricePerSeat,
+        paidAt: new Date(),
+        confirmDeadline,
       },
       include: {
         passenger: {

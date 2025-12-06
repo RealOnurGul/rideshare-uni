@@ -21,12 +21,15 @@ export async function GET(
           select: { id: true, make: true, model: true, year: true, color: true, licensePlate: true },
         },
         bookings: {
+          orderBy: { createdAt: "desc" },
           include: {
             passenger: {
               select: { id: true, name: true, university: true, image: true },
             },
+            reviews: {
+              select: { id: true, reviewerId: true, revieweeId: true },
+            },
           },
-          orderBy: { createdAt: "desc" },
         },
       },
     });
@@ -114,9 +117,45 @@ export async function PATCH(
         return NextResponse.json({ error: "Can only complete upcoming or in-progress rides" }, { status: 400 });
       }
 
-      await prisma.ride.update({
-        where: { id },
-        data: { status: "completed" },
+      const driverName = ride.driver.name || "Driver";
+
+      // Update ride status and create notifications for passengers
+      await prisma.$transaction(async (tx) => {
+        await tx.ride.update({
+          where: { id },
+          data: { status: "completed" },
+        });
+
+        // Add system message to chat
+        await tx.message.create({
+          data: {
+            rideId: id,
+            content: `🏁 ${driverName} has marked this ride as complete. Please confirm and leave a review!`,
+            isSystem: true,
+          },
+        });
+
+        // Notify all accepted passengers to confirm and review
+        for (const booking of ride.bookings) {
+          // Set confirmation deadline (24 hours from now)
+          const confirmDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+          
+          await tx.booking.update({
+            where: { id: booking.id },
+            data: { confirmDeadline },
+          });
+
+          await tx.notification.create({
+            data: {
+              userId: booking.passenger.id,
+              type: "ride_completed",
+              title: "Ride Completed - Please Confirm",
+              message: `${driverName} has marked your ride from ${ride.origin.split(",")[0]} to ${ride.destination.split(",")[0]} as complete. Please confirm and leave a review.`,
+              rideId: id,
+              bookingId: booking.id,
+            },
+          });
+        }
       });
 
       return NextResponse.json({ success: true, status: "completed" });

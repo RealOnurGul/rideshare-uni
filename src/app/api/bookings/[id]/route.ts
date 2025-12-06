@@ -8,6 +8,54 @@ import {
   notifyBookingCancelled,
 } from "@/lib/notifications";
 
+// GET /api/bookings/[id] - Get booking details
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: bookingId } = await params;
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        ride: {
+          select: {
+            id: true,
+            origin: true,
+            destination: true,
+            dateTime: true,
+            pricePerSeat: true,
+            status: true,
+            driver: {
+              select: { id: true, name: true, image: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    // Only passenger or driver can view booking details
+    if (booking.passengerId !== session.user.id && booking.ride.driver.id !== session.user.id) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    return NextResponse.json(booking);
+  } catch (error) {
+    console.error("Error fetching booking:", error);
+    return NextResponse.json({ error: "Failed to fetch booking" }, { status: 500 });
+  }
+}
+
 // PATCH /api/bookings/[id] - Update booking status (accept/decline/cancel)
 export async function PATCH(
   request: NextRequest,

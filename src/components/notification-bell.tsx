@@ -10,6 +10,7 @@ interface Notification {
   title: string;
   message: string;
   rideId: string | null;
+  bookingId: string | null;
   read: boolean;
   createdAt: string;
 }
@@ -81,6 +82,8 @@ export default function NotificationBell() {
         return "🚫";
       case "ride_cancelled":
         return "⚠️";
+      case "ride_completed":
+        return "🏁";
       case "new_message":
         return "💬";
       default:
@@ -146,10 +149,19 @@ export default function NotificationBell() {
                 <p className="text-sm">No notifications yet</p>
               </div>
             ) : (
-              notifications.map((notification) => (
+              notifications.map((notification) => {
+                // Determine the link based on notification type
+                let notificationLink = "/dashboard";
+                if (notification.type === "ride_completed" && notification.bookingId) {
+                  notificationLink = `/confirm-ride/${notification.bookingId}`;
+                } else if (notification.rideId) {
+                  notificationLink = `/rides/${notification.rideId}`;
+                }
+                
+                return (
                 <Link
                   key={notification.id}
-                  href={notification.rideId ? `/rides/${notification.rideId}` : "/dashboard"}
+                  href={notificationLink}
                   onClick={() => setIsOpen(false)}
                   className={`block px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50 last:border-0 ${
                     !notification.read ? "bg-purple-50/50" : ""
@@ -171,7 +183,8 @@ export default function NotificationBell() {
                     </div>
                   </div>
                 </Link>
-              ))
+              );
+              })
             )}
           </div>
         </div>

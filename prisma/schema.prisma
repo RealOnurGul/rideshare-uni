@@ -50,15 +50,18 @@ model User {
   image         String?
   university    String?
   phone         String?
+  bio           String?   // Short bio for profile
   createdAt     DateTime  @default(now())
 
-  accounts      Account[]
-  sessions      Session[]
-  vehicles      Vehicle[]
-  rides         Ride[]    @relation("DriverRides")
-  bookings      Booking[] @relation("PassengerBookings")
-  notifications Notification[]
-  messages      Message[]
+  accounts        Account[]
+  sessions        Session[]
+  vehicles        Vehicle[]
+  rides           Ride[]    @relation("DriverRides")
+  bookings        Booking[] @relation("PassengerBookings")
+  notifications   Notification[]
+  messages        Message[]
+  reviewsGiven    Review[]  @relation("ReviewsGiven")
+  reviewsReceived Review[]  @relation("ReviewsReceived")
 }
 
 model Vehicle {
@@ -114,13 +117,25 @@ model Booking {
   id          String   @id @default(cuid())
   rideId      String
   passengerId String
-  // Status: "pending", "accepted", "declined", "cancelled"
+  // Status: "pending", "accepted", "declined", "cancelled", "completed"
   status      String   @default("pending")
+  
+  // Payment tracking (mock for now, will use Stripe/Shop Pay later)
+  paymentStatus   String?   // "pending", "held", "released", "refunded"
+  paymentAmount   Float?    // Amount in dollars
+  paymentIntentId String?   // For Stripe integration later
+  paidAt          DateTime? // When passenger paid
+  
+  // Ride completion confirmation
+  confirmedAt     DateTime? // When passenger confirmed ride happened
+  confirmDeadline DateTime? // 24 hours after ride start - auto-confirm if not done
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  ride      Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
-  passenger User @relation("PassengerBookings", fields: [passengerId], references: [id], onDelete: Cascade)
+  ride      Ride    @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  passenger User    @relation("PassengerBookings", fields: [passengerId], references: [id], onDelete: Cascade)
+  reviews    Review[] // Multiple reviews per booking (passenger->driver and driver->passenger)
 
   @@unique([rideId, passengerId])
 }
@@ -151,4 +166,20 @@ model Message {
   sender User? @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([rideId, createdAt])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  bookingId  String   // Allow multiple reviews per booking (passenger->driver and driver->passenger)
+  reviewerId String   // The person giving the review
+  revieweeId String   // The person being reviewed
+  rating     Int      // 1-5 stars
+  comment    String?  // Optional comment
+  createdAt  DateTime @default(now())
+
+  booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reviewer User    @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee User    @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, reviewerId]) // Each person can only review once per booking
 }

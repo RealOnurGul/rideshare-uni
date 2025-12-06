@@ -53,6 +53,25 @@ export default function NewRidePage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Restore state from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("newRideFormState");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.origin) setOrigin(parsed.origin);
+        if (parsed.destination) setDestination(parsed.destination);
+        if (parsed.preferences) setPreferences(parsed.preferences);
+        if (parsed.formData) setFormData(parsed.formData);
+        if (parsed.step) setStep(parsed.step);
+        // Clear after restoring
+        localStorage.removeItem("newRideFormState");
+      } catch (e) {
+        console.error("Error restoring form state:", e);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (session?.user?.id) {
       fetchVehicles();
@@ -209,6 +228,28 @@ export default function NewRidePage() {
     );
   }
 
+  if (!session.user?.university) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200 text-center max-w-md">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">University Verification Required</h1>
+          <p className="text-gray-600 mb-6">Please verify your university email before offering a ride.</p>
+          <Link
+            href="/onboarding"
+            className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
+          >
+            Complete Verification
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -320,12 +361,18 @@ export default function NewRidePage() {
                 </svg>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No vehicles yet</h3>
                 <p className="text-gray-600 mb-4">You need to add a vehicle before offering a ride.</p>
-                <Link
-                  href="/vehicles"
+                <button
+                  onClick={() => {
+                    // Save state before navigating
+                    localStorage.setItem("newRideFormState", JSON.stringify({
+                      origin, destination, preferences, formData, step
+                    }));
+                    router.push("/vehicles");
+                  }}
                   className="inline-block px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
                 >
                   Add a Vehicle
-                </Link>
+                </button>
               </div>
             ) : (
               <>
@@ -375,9 +422,18 @@ export default function NewRidePage() {
                 </div>
 
                 <div className="text-center mb-8">
-                  <Link href="/vehicles" className="text-purple-600 hover:text-purple-700 font-medium text-sm cursor-pointer">
+                  <button
+                    onClick={() => {
+                      // Save state before navigating
+                      localStorage.setItem("newRideFormState", JSON.stringify({
+                        origin, destination, preferences, formData, step
+                      }));
+                      router.push("/vehicles");
+                    }}
+                    className="text-purple-600 hover:text-purple-700 font-medium text-sm cursor-pointer"
+                  >
                     + Add another vehicle
-                  </Link>
+                  </button>
                 </div>
 
                 {/* Ride Preferences */}
@@ -442,7 +498,7 @@ export default function NewRidePage() {
               </>
             )}
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 mt-6">
               <button
                 type="button"
                 onClick={handleBack}
