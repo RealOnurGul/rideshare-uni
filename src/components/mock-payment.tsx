@@ -188,3 +188,4 @@ export function MockPayment({ amount, onSuccess, onCancel, isProcessing }: MockP
   );
 }
 
+
