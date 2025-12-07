@@ -3,11 +3,20 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ALLOWED_DOMAINS } from "@/lib/allowed-domains";
 
 export default function SignInPage() {
+  const router = useRouter();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+  });
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -20,11 +29,70 @@ export default function SignInPage() {
     }
   };
 
+  const handleManualAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      if (isSignUp) {
+        // Sign up
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            password: formData.password,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to create account");
+        }
+
+        // After successful sign-up, sign in
+        const signInResult = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (signInResult?.error) {
+          throw new Error("Account created but failed to sign in. Please try signing in.");
+        }
+
+        // Redirect to home page - user can complete profile later via banner
+        router.push("/");
+      } else {
+        // Sign in
+        const result = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          throw new Error("Invalid email or password");
+        }
+
+        router.push("/rides");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 transition-all duration-300 ease-in-out">
             <Link href="/" className="inline-flex items-center gap-2 mb-6">
               <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,8 +100,12 @@ export default function SignInPage() {
                 </svg>
               </div>
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to StudentRide</h1>
-            <p className="text-gray-600">Sign in with your Google account to continue</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2 transition-all duration-300 ease-in-out">
+              {isSignUp ? "Create an Account" : "Welcome to StudentRide"}
+            </h1>
+            <p className="text-gray-600 transition-all duration-300 ease-in-out">
+              {isSignUp ? "Sign up to get started" : "Sign in to continue"}
+            </p>
           </div>
 
           {error && (
@@ -41,6 +113,97 @@ export default function SignInPage() {
               {error}
             </div>
           )}
+
+          {/* Manual Sign Up/Sign In Form */}
+          <form onSubmit={handleManualAuth} className="mb-6 space-y-4">
+            <div className={`transition-all duration-300 ease-in-out ${isSignUp ? "max-h-40 opacity-100 mb-4 overflow-visible" : "max-h-0 opacity-0 mb-0 overflow-hidden"}`}>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name
+                  </label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    required={isSignUp}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all duration-200"
+                    placeholder="John"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    required={isSignUp}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all duration-200"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="transition-all duration-300 ease-in-out">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all duration-200"
+                placeholder="your.email@example.com"
+              />
+            </div>
+            <div className="transition-all duration-300 ease-in-out">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+                minLength={8}
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all duration-200"
+                placeholder={isSignUp ? "At least 8 characters" : "Your password"}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  {isSignUp ? "Creating account..." : "Signing in..."}
+                </span>
+              ) : (
+                isSignUp ? "Create Account" : "Sign In"
+              )}
+            </button>
+          </form>
+
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            </div>
+          </div>
 
           <button
             onClick={handleGoogleSignIn}
@@ -76,6 +239,20 @@ export default function SignInPage() {
               </>
             )}
           </button>
+
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError("");
+                setFormData({ firstName: "", lastName: "", email: "", password: "" });
+              }}
+              className="text-sm text-purple-600 hover:text-purple-700 font-medium transition-all duration-200 ease-in-out cursor-pointer hover:underline underline-offset-2"
+            >
+              {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+            </button>
+          </div>
 
           <div className="mt-8 p-4 bg-purple-50 rounded-xl">
             <p className="text-sm text-purple-800 font-medium mb-2">🎓 University Verification</p>
