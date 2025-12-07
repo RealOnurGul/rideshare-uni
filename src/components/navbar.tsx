@@ -10,6 +10,7 @@ export function Navbar() {
   const { data: session, status } = useSession();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isHowItWorksHovered, setIsHowItWorksHovered] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -56,7 +57,18 @@ export function Navbar() {
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-1">
-              <div className="relative group">
+              <div 
+                className="relative"
+                onMouseEnter={() => setIsHowItWorksHovered(true)}
+                onMouseLeave={(e) => {
+                  // Only close if we're actually leaving the entire dropdown area
+                  // Check if we're moving to a related target (dropdown menu)
+                  const relatedTarget = e.relatedTarget as HTMLElement;
+                  if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+                    setIsHowItWorksHovered(false);
+                  }
+                }}
+              >
                 <Link
                   href="/how-it-works"
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
@@ -69,11 +81,24 @@ export function Navbar() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                   How it works
-                  <svg className="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-3 h-3 transition-transform duration-200 ${isHowItWorksHovered ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </Link>
-                <div className="absolute top-full left-0 mt-2 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-2">
+                {/* Invisible bridge to prevent dropdown from closing when moving cursor */}
+                <div 
+                  className="absolute top-full left-0 w-full h-2"
+                  onMouseEnter={() => setIsHowItWorksHovered(true)}
+                ></div>
+                <div 
+                  className={`absolute top-full left-0 mt-2 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 transition-all duration-300 transform ${
+                    isHowItWorksHovered 
+                      ? "opacity-100 visible translate-y-0 pointer-events-auto" 
+                      : "opacity-0 invisible translate-y-2 pointer-events-none"
+                  }`}
+                  onMouseEnter={() => setIsHowItWorksHovered(true)}
+                  onMouseLeave={() => setIsHowItWorksHovered(false)}
+                >
                   <div className="p-2">
                     {[
                       { href: "/how-it-works/drivers", label: "For drivers", icon: "🚗" },

@@ -51,6 +51,7 @@ model User {
   university    String?
   phone         String?
   bio           String?   // Short bio for profile
+  password      String?   // Hashed password for manual sign-up
   createdAt     DateTime  @default(now())
 
   accounts        Account[]
