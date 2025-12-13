@@ -345,7 +345,7 @@ export default function RidesPage() {
 
         {/* Map View */}
         {viewMode === "map" && (
-          <div className="mb-8 animate-fade-in">
+          <div className="mb-8">
             <RidesMap
               rides={rides}
               onRideSelect={handleRideSelect}
@@ -419,11 +419,9 @@ export default function RidesPage() {
             ) : (
               <div className="space-y-4">
                 <p className="text-sm text-gray-500">{rides.length} ride{rides.length !== 1 ? 's' : ''} available</p>
-                {rides.map((ride, index) => (
+                {rides.map((ride) => (
                   <div
                     key={ride.id}
-                    className="animate-fade-in"
-                    style={{ animationDelay: `${index * 50}ms` }}
                   >
                     <Link
                       href={`/rides/${ride.id}`}
