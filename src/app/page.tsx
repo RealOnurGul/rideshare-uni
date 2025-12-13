@@ -1,6 +1,79 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
+
+interface Driver {
+  id: string;
+  name: string | null;
+  university: string | null;
+  image: string | null;
+}
+
+interface Ride {
+  id: string;
+  origin: string;
+  destination: string;
+  dateTime: string;
+  pricePerSeat: number;
+  seatsAvailable: number;
+  driver: Driver;
+}
+
+const formatPrice = (price: number): string => {
+  return price.toFixed(2);
+};
 
 export default function Home() {
+  const [featuredRides, setFeaturedRides] = useState<Ride[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeaturedRides = async () => {
+      try {
+        const response = await fetch("/api/rides?status=upcoming");
+        if (response.ok) {
+          const rides: Ride[] = await response.json();
+          // Get top 3 rides (sorted by dateTime ascending, so earliest first)
+          setFeaturedRides(rides.slice(0, 3));
+        }
+      } catch (error) {
+        console.error("Error fetching featured rides:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFeaturedRides();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return "Tomorrow";
+    } else {
+      return date.toLocaleDateString("en-CA", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("en-CA", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <div className="bg-white">
       {/* Hero Section - With Montreal Background */}
@@ -73,95 +146,78 @@ export default function Home() {
 
             {/* Right Content - Clean Ride Cards */}
             <div className="hidden lg:block space-y-4">
-              {/* Card 1 */}
-              <div className="bg-white border border-purple-100/50 rounded-lg p-5 hover:border-purple-200/50 hover:shadow-sm transition-all">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
-                      M
+              {isLoading ? (
+                // Loading state
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white border border-purple-100/50 rounded-lg p-5 animate-pulse">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                          <div className="flex-1">
+                            <div className="h-4 bg-gray-200 rounded mb-2 w-3/4"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                        <div className="h-6 bg-gray-200 rounded w-16"></div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="h-4 bg-gray-200 rounded w-20"></div>
+                        <div className="h-4 bg-gray-200 rounded w-16"></div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900 mb-1">Montreal → Toronto</div>
-                      <div className="text-sm text-gray-500">Tomorrow, 8:00 AM</div>
+                  ))}
+                </>
+              ) : featuredRides.length > 0 ? (
+                // Real rides
+                featuredRides.map((ride) => (
+                  <Link
+                    key={ride.id}
+                    href={`/rides/${ride.id}`}
+                    className="block bg-white border border-purple-100/50 rounded-lg p-5 hover:border-purple-200/50 hover:shadow-sm transition-all cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        {ride.driver.image ? (
+                          <img
+                            src={ride.driver.image}
+                            alt={ride.driver.name || "Driver"}
+                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <span className="text-[#5140BF] font-semibold text-sm">
+                              {ride.driver.name?.[0] || "D"}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 mb-1">
+                            {ride.origin.split(",")[0]} → {ride.destination.split(",")[0]}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {formatDate(ride.dateTime)}, {formatTime(ride.dateTime)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900">${formatPrice(ride.pricePerSeat)}</div>
                     </div>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">$35</div>
-                </div>
-                <div className="flex items-center gap-6 text-sm text-gray-600">
-                  <span className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    3 seats
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    4h 30m
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="bg-white border border-purple-100/50 rounded-lg p-5 hover:border-purple-200/50 hover:shadow-sm transition-all">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
-                      Q
+                    <div className="flex items-center gap-6 text-sm text-gray-600">
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        {ride.seatsAvailable} {ride.seatsAvailable === 1 ? "seat" : "seats"}
+                      </span>
                     </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900 mb-1">Quebec City → Montreal</div>
-                      <div className="text-sm text-gray-500">Friday, 5:00 PM</div>
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">$25</div>
+                  </Link>
+                ))
+              ) : (
+                // No rides available
+                <div className="bg-white border border-purple-100/50 rounded-lg p-5 text-center text-gray-500">
+                  No upcoming rides available
                 </div>
-                <div className="flex items-center gap-6 text-sm text-gray-600">
-                  <span className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    2 seats
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    2h 15m
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div className="bg-white border border-purple-100/50 rounded-lg p-5 hover:border-purple-200/50 hover:shadow-sm transition-all">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center text-white font-semibold text-sm">
-                      O
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900 mb-1">Ottawa → Montreal</div>
-                      <div className="text-sm text-gray-500">Sunday, 6:00 PM</div>
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">$20</div>
-                </div>
-                <div className="flex items-center gap-6 text-sm text-gray-600">
-                  <span className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    4 seats
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    2h 45m
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

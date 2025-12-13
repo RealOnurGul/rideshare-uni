@@ -124,9 +124,15 @@ export default function RidesPage() {
     }
   };
 
+  // Auto-search with debouncing when filters change
   useEffect(() => {
-    fetchRides();
-  }, []);
+    const timeoutId = setTimeout(() => {
+      fetchRides();
+    }, 500); // 500ms debounce delay
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.origin, filters.destination, filters.dateFrom, filters.dateTo, filters.university]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,6 +159,10 @@ export default function RidesPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const formatPrice = (price: number): string => {
+    return price.toFixed(2);
   };
 
   const handleRideSelect = (rideId: string) => {
@@ -209,7 +219,7 @@ export default function RidesPage() {
               {session && (
                 <Link
                   href="/rides/new"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#5140BF] hover:opacity-90 text-white font-semibold rounded-xl transition-colors cursor-pointer"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -235,7 +245,7 @@ export default function RidesPage() {
                 onChange={(e) => setFilters({ ...filters, origin: e.target.value })}
                 onFocus={() => setOriginFocused(true)}
                 placeholder="Origin"
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm cursor-text"
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5140BF] focus:border-transparent text-sm cursor-text"
               />
               {originFocused && originSuggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-lg border border-gray-200 max-h-48 overflow-auto">
@@ -244,7 +254,7 @@ export default function RidesPage() {
                       key={i}
                       type="button"
                       onClick={() => selectOrigin(loc)}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-900 hover:bg-purple-50 border-b border-gray-100 last:border-0 cursor-pointer transition-colors"
+                      className="w-full px-4 py-2.5 text-left text-sm text-gray-900 hover:bg-gray-100 border-b border-gray-100 last:border-0 cursor-pointer transition-colors"
                     >
                       {loc}
                     </button>
@@ -262,7 +272,7 @@ export default function RidesPage() {
                 onChange={(e) => setFilters({ ...filters, destination: e.target.value })}
                 onFocus={() => setDestinationFocused(true)}
                 placeholder="Destination"
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm cursor-text"
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#5140BF] focus:border-transparent text-sm cursor-text"
               />
               {destinationFocused && destinationSuggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-lg border border-gray-200 max-h-48 overflow-auto">
@@ -271,7 +281,7 @@ export default function RidesPage() {
                       key={i}
                       type="button"
                       onClick={() => selectDestination(loc)}
-                      className="w-full px-4 py-2.5 text-left text-sm text-gray-900 hover:bg-purple-50 border-b border-gray-100 last:border-0 cursor-pointer transition-colors"
+                      className="w-full px-4 py-2.5 text-left text-sm text-gray-900 hover:bg-gray-100 border-b border-gray-100 last:border-0 cursor-pointer transition-colors"
                     >
                       {loc}
                     </button>
@@ -286,7 +296,7 @@ export default function RidesPage() {
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm cursor-pointer"
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5140BF] focus:border-transparent text-sm cursor-pointer"
               />
             </div>
             <div className="col-span-1">
@@ -296,7 +306,7 @@ export default function RidesPage() {
                 value={filters.dateTo}
                 onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
                 min={filters.dateFrom || undefined}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm cursor-pointer"
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5140BF] focus:border-transparent text-sm cursor-pointer"
               />
             </div>
             <div className="col-span-1">
@@ -304,7 +314,7 @@ export default function RidesPage() {
               <select
                 value={filters.university}
                 onChange={(e) => setFilters({ ...filters, university: e.target.value })}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm cursor-pointer"
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5140BF] focus:border-transparent text-sm cursor-pointer"
               >
                 <option value="">All</option>
                 <option value="McGill">McGill</option>
@@ -315,7 +325,7 @@ export default function RidesPage() {
             <div className="col-span-1 flex items-end">
               <button
                 type="submit"
-                className="w-full px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-colors text-sm cursor-pointer"
+                className="w-full px-4 py-2.5 bg-[#5140BF] hover:opacity-90 text-white font-medium rounded-xl transition-colors text-sm cursor-pointer"
               >
                 Search
               </button>
@@ -347,13 +357,13 @@ export default function RidesPage() {
                   <Link
                     key={ride.id}
                     href={`/rides/${ride.id}`}
-                    className="block bg-white rounded-xl p-5 shadow-sm border-2 border-purple-500 hover:shadow-md transition-shadow cursor-pointer"
+                    className="block bg-white rounded-xl p-5 shadow-sm border-2 border-[#5140BF] hover:shadow-md transition-shadow cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2 text-lg font-semibold text-gray-900">
                           {ride.origin}
-                          <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-[#5140BF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                           </svg>
                           {ride.destination}
@@ -363,7 +373,7 @@ export default function RidesPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-purple-600">${ride.pricePerSeat}</div>
+                        <div className="text-2xl font-bold text-[#5140BF]">${formatPrice(ride.pricePerSeat)}</div>
                         <p className="text-gray-500 text-sm">{ride.seatsAvailable} seats</p>
                       </div>
                     </div>
@@ -379,12 +389,12 @@ export default function RidesPage() {
           <>
             {isLoading ? (
               <div className="flex justify-center items-center py-20">
-                <div className="animate-spin rounded-full h-10 w-10 border-2 border-purple-600 border-t-transparent"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-2 border-[#5140BF] border-t-transparent"></div>
               </div>
             ) : rides.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-200 text-center">
-                <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-[#5140BF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
                 </div>
@@ -397,7 +407,7 @@ export default function RidesPage() {
                 {session && (
                   <Link
                     href="/rides/new"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#5140BF] hover:opacity-90 text-white font-semibold rounded-xl transition-colors cursor-pointer"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -417,21 +427,21 @@ export default function RidesPage() {
                   >
                     <Link
                       href={`/rides/${ride.id}`}
-                      className="block bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
+                      className="block bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:border-[#5140BF]/30 hover:shadow-md transition-all cursor-pointer"
                     >
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         {/* Route Info */}
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <div className="flex items-center gap-2">
-                              <div className="w-2.5 h-2.5 rounded-full bg-purple-600"></div>
+                              <div className="w-2.5 h-2.5 rounded-full bg-[#5140BF]"></div>
                               <span className="text-lg font-semibold text-gray-900">{ride.origin}</span>
                             </div>
-                            <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-[#5140BF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                             </svg>
                             <div className="flex items-center gap-2">
-                              <div className="w-2.5 h-2.5 rounded-full bg-purple-400"></div>
+                              <div className="w-2.5 h-2.5 rounded-full bg-[#5140BF]"></div>
                               <span className="text-lg font-semibold text-gray-900">{ride.destination}</span>
                             </div>
                           </div>
@@ -451,18 +461,19 @@ export default function RidesPage() {
                           </div>
                         </div>
 
-                        {/* Driver Info */}
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-3">
+                        {/* Driver Info, Seats, Price - Grid Layout */}
+                        <div className="grid grid-cols-[auto_auto_auto_auto_auto] items-center gap-4">
+                          {/* Driver Info - Left Aligned */}
+                          <div className="flex items-center gap-3 min-w-[200px]">
                             {ride.driver.image ? (
                               <img
                                 src={ride.driver.image}
                                 alt=""
-                                className="w-10 h-10 rounded-full object-cover"
+                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                               />
                             ) : (
-                              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                                <span className="text-purple-600 font-semibold">
+                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                <span className="text-[#5140BF] font-semibold">
                                   {ride.driver.name?.[0] || "D"}
                                 </span>
                               </div>
@@ -477,16 +488,18 @@ export default function RidesPage() {
 
                           <div className="h-10 w-px bg-gray-200 hidden lg:block"></div>
 
-                          <div className="text-center px-3">
-                            <span className="inline-flex items-center px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">
+                          {/* Seats - Left Aligned */}
+                          <div className="flex items-center justify-start px-3 min-w-[100px]">
+                            <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-[#5140BF] rounded-full text-sm font-medium">
                               {ride.seatsAvailable} seat{ride.seatsAvailable !== 1 ? 's' : ''}
                             </span>
                           </div>
 
                           <div className="h-10 w-px bg-gray-200 hidden lg:block"></div>
 
-                          <div className="text-right min-w-[80px]">
-                            <div className="text-2xl font-bold text-gray-900">${ride.pricePerSeat}</div>
+                          {/* Price - Left Aligned */}
+                          <div className="text-left min-w-[100px]">
+                            <div className="text-2xl font-bold text-gray-900">${formatPrice(ride.pricePerSeat)}</div>
                             <div className="text-xs text-gray-500">per seat</div>
                           </div>
                         </div>

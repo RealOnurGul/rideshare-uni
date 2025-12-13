@@ -227,6 +227,10 @@ export default function RideDetailPage({
     });
   };
 
+  const formatPrice = (price: number): string => {
+    return price.toFixed(2);
+  };
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString("en-CA", {
@@ -265,6 +269,9 @@ export default function RideDetailPage({
   );
   const pendingBookings = ride?.bookings.filter((b) => b.status === "pending");
   const acceptedBookings = ride?.bookings.filter((b) => b.status === "accepted");
+  
+  // Check if user is a member (driver or accepted passenger)
+  const isMember = isDriver || (userBooking?.status === "accepted");
 
   if (isLoading) {
     return (
@@ -337,9 +344,20 @@ export default function RideDetailPage({
             {/* Route Card */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
               <div className="flex items-start justify-between mb-6">
-                <div>
+                <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
                     {getStatusBadge(ride.status)}
+                    {isMember && (
+                      <Link
+                        href={`/chats?rideId=${ride.id}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#5140BF] hover:opacity-90 text-white font-medium rounded-lg transition-all cursor-pointer text-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Chat
+                      </Link>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <div className="flex items-center gap-2">
@@ -370,7 +388,7 @@ export default function RideDetailPage({
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-purple-600">${ride.pricePerSeat}</div>
+                  <div className="text-3xl font-bold text-purple-600">${formatPrice(ride.pricePerSeat)}</div>
                   <div className="text-gray-500 text-sm">per seat</div>
                 </div>
               </div>
@@ -690,7 +708,7 @@ export default function RideDetailPage({
                 ) : (
                   <div>
                     <div className="text-center mb-4">
-                      <div className="text-3xl font-bold text-purple-600">${ride.pricePerSeat}</div>
+                      <div className="text-3xl font-bold text-purple-600">${formatPrice(ride.pricePerSeat)}</div>
                       <div className="text-sm text-gray-500">per seat</div>
                     </div>
                     <button

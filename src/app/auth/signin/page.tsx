@@ -6,6 +6,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ALLOWED_DOMAINS } from "@/lib/allowed-domains";
 
+interface TestUser {
+  email: string;
+  name: string | null;
+  password: string;
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -17,6 +23,40 @@ export default function SignInPage() {
     email: "",
     password: "",
   });
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [adminExpanded, setAdminExpanded] = useState(false);
+  const [testUsers, setTestUsers] = useState<TestUser[]>([]);
+  const [loadingTestUsers, setLoadingTestUsers] = useState(false);
+
+  const handleAdminUnlock = async () => {
+    if (adminPassword === "1234") {
+      setAdminUnlocked(true);
+      setAdminExpanded(true);
+      setLoadingTestUsers(true);
+      try {
+        const res = await fetch("/api/admin/test-users");
+        if (res.ok) {
+          const data = await res.json();
+          setTestUsers(data.users || []);
+        }
+      } catch (err) {
+        console.error("Error fetching test users:", err);
+      } finally {
+        setLoadingTestUsers(false);
+      }
+    } else {
+      setError("Invalid admin password");
+    }
+  };
+
+  const handleTestUserClick = (user: TestUser) => {
+    setFormData({
+      ...formData,
+      email: user.email,
+      password: user.password,
+    });
+  };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -89,7 +129,110 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-[calc(100vh-64px)] bg-gray-50 flex items-center justify-center p-4 relative">
+      {/* Fixed Admin Bar - Top Right */}
+      <div className="fixed top-20 right-4 z-50">
+        {!adminExpanded ? (
+          <button
+            onClick={() => setAdminExpanded(true)}
+            className="bg-[#5140BF] text-white px-4 py-2 rounded-lg shadow-lg hover:opacity-90 transition-all duration-200 text-sm font-medium cursor-pointer"
+          >
+            FOR ADMIN
+          </button>
+        ) : (
+          <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-80 max-h-[calc(100vh-120px)] overflow-y-auto">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-gray-900">FOR ADMIN</h2>
+                <button
+                  onClick={() => {
+                    setAdminExpanded(false);
+                    setAdminUnlocked(false);
+                    setAdminPassword("");
+                    setTestUsers([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {!adminUnlocked ? (
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="adminPassword" className="block text-xs font-medium text-gray-700 mb-1">
+                      Admin Password
+                    </label>
+                    <input
+                      id="adminPassword"
+                      type="password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          handleAdminUnlock();
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5140BF] focus:border-[#5140BF] outline-none transition-all text-sm"
+                      placeholder="Enter 1234"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAdminUnlock}
+                    className="w-full py-2 px-3 bg-[#5140BF] hover:opacity-90 text-white font-semibold rounded-lg transition-colors cursor-pointer text-sm"
+                  >
+                    Unlock
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-xs text-green-800 font-medium mb-2">✓ Unlocked</p>
+                    <p className="text-xs text-green-700 mb-3">Click user to auto-fill:</p>
+                    
+                    {loadingTestUsers ? (
+                      <div className="text-center py-3">
+                        <svg className="animate-spin h-4 w-4 text-gray-500 mx-auto" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {testUsers.map((user, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleTestUserClick(user)}
+                            className="w-full text-left p-2 bg-white border border-gray-200 rounded-lg hover:border-[#5140BF] hover:bg-purple-50 transition-all cursor-pointer"
+                          >
+                            <div className="font-medium text-gray-900 text-xs">{user.name || "User"}</div>
+                            <div className="text-xs text-gray-600 mt-0.5 truncate">{user.email}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">Pass: {user.password}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setAdminUnlocked(false);
+                      setAdminPassword("");
+                      setTestUsers([]);
+                    }}
+                    className="w-full py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors cursor-pointer text-xs"
+                  >
+                    Lock
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main Sign In Form - Unchanged */}
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
           <div className="text-center mb-8 transition-all duration-300 ease-in-out">

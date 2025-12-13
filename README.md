@@ -164,13 +164,41 @@ Each installation has its own local SQLite database. When you clone this repo:
 - Your database starts empty (no shared data)
 - View/edit data with `npx prisma studio`
 
-## Deploying to Vercel (Free)
+## Deploying
+
+### Option 1: Deploying to Vercel (Recommended for Production)
 
 When ready to deploy:
 1. Switch SQLite to [Neon](https://neon.tech) or [Supabase](https://supabase.com) (free PostgreSQL)
 2. Update `prisma/schema.prisma`: change `provider` from `"sqlite"` to `"postgresql"`
 3. Set `DATABASE_URL` in Vercel environment variables
 4. Deploy!
+
+### Option 2: Deploying to Cloudflare Pages (Demo/Portfolio Mode)
+
+For a portfolio demo with preseeded data (no database needed):
+
+1. **Enable Demo Mode**
+   - Set environment variable `DEMO_MODE=true` in Cloudflare Pages
+   - Note: This requires updating API routes to use mock data (see below)
+
+2. **Update API Routes** (Work in Progress)
+   - API routes need to check `DEMO_MODE` and use `getMockRides()`, `getMockRideById()`, etc. from `src/lib/mock-data.ts`
+   - Mock data file is ready with preseeded rides, users, vehicles, bookings
+
+3. **Deploy**
+   ```bash
+   # Build and deploy
+   npm run build
+   # Then deploy via Cloudflare Pages dashboard or Wrangler
+   ```
+
+**Limitations of Demo Mode:**
+- Data is read-only (no creating/editing rides)
+- Perfect for showcasing the UI/UX
+- No authentication required (uses mock session)
+
+**Alternative for Cloudflare:** Consider using Cloudflare D1 (SQLite-compatible) for persistent data, but requires Prisma adapter updates.
 
 ## Service Area
 

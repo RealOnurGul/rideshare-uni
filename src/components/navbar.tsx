@@ -43,14 +43,14 @@ export function Navbar() {
               className="flex items-center gap-3 group cursor-pointer"
             >
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+                <div className="w-10 h-10 bg-[#5140BF] rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
                 </div>
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
               </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="text-2xl font-bold text-[#5140BF]">
                 StudentRide
               </span>
             </Link>
@@ -73,7 +73,7 @@ export function Navbar() {
                   href="/how-it-works"
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
                     pathname?.startsWith("/how-it-works")
-                      ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700"
+                      ? "bg-gray-100 text-[#5140BF]"
                       : "text-gray-700 hover:bg-gray-100"
                   } cursor-pointer`}
                 >
@@ -109,7 +109,7 @@ export function Navbar() {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all duration-200 group/item cursor-pointer"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 transition-all duration-200 group/item cursor-pointer"
                       >
                         <span className="text-xl">{item.icon}</span>
                         <span className="text-gray-700 font-medium group-hover/item:text-indigo-700">{item.label}</span>
@@ -126,7 +126,7 @@ export function Navbar() {
                 href="/rides"
                 className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
                   isActive("/rides") && !pathname?.startsWith("/rides/new")
-                    ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700"
+                    ? "bg-gray-100 text-[#5140BF]"
                     : "text-gray-700 hover:bg-gray-100"
                 } cursor-pointer`}
               >
@@ -139,7 +139,7 @@ export function Navbar() {
                     href="/rides/new"
                     className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
                       isActive("/rides/new", true)
-                        ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700"
+                        ? "bg-gray-100 text-[#5140BF]"
                         : "text-gray-700 hover:bg-gray-100"
                     } cursor-pointer`}
                   >
@@ -149,7 +149,7 @@ export function Navbar() {
                     href="/dashboard"
                     className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
                       isActive("/dashboard")
-                        ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700"
+                        ? "bg-gray-100 text-[#5140BF]"
                         : "text-gray-700 hover:bg-gray-100"
                     } cursor-pointer`}
                   >
@@ -159,7 +159,7 @@ export function Navbar() {
                     href="/chats"
                     className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 relative ${
                       isActive("/chats")
-                        ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700"
+                        ? "bg-gray-100 text-[#5140BF]"
                         : "text-gray-700 hover:bg-gray-100"
                     } cursor-pointer`}
                   >
@@ -190,7 +190,7 @@ export function Navbar() {
                         className="w-9 h-9 rounded-xl object-cover ring-2 ring-gray-200 group-hover:ring-indigo-300 transition-all"
                       />
                     ) : (
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center ring-2 ring-gray-200 group-hover:ring-indigo-300 transition-all">
+                      <div className="w-9 h-9 rounded-xl bg-[#5140BF] flex items-center justify-center ring-2 ring-gray-200 group-hover:ring-[#5140BF] transition-all">
                         <span className="text-white font-semibold text-sm">
                           {session.user?.name?.[0] || session.user?.email?.[0]?.toUpperCase() || "U"}
                         </span>
@@ -220,7 +220,7 @@ export function Navbar() {
                   </Link>
                   <Link
                     href="/auth/signin"
-                    className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 cursor-pointer"
+                    className="px-6 py-2.5 text-sm font-semibold text-white bg-[#5140BF] hover:opacity-90 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 cursor-pointer"
                   >
                     Get Started
                   </Link>
@@ -271,14 +271,14 @@ export function Navbar() {
             <div className="flex flex-col gap-2">
               <Link
                 href="/how-it-works"
-                className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all cursor-pointer"
+                className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
                 onClick={() => setIsMenuOpen(false)}
               >
                 How it works
               </Link>
               <Link
                 href="/rides"
-                className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all cursor-pointer"
+                className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Find Rides
@@ -287,21 +287,21 @@ export function Navbar() {
                 <>
                   <Link
                     href="/rides/new"
-                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all cursor-pointer"
+                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Offer a Ride
                   </Link>
                   <Link
                     href="/dashboard"
-                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all cursor-pointer"
+                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/chats"
-                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all cursor-pointer flex items-center gap-2"
+                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gray-100 transition-all cursor-pointer flex items-center gap-2"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,14 +311,14 @@ export function Navbar() {
                   </Link>
                   <Link
                     href="/vehicles"
-                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all cursor-pointer"
+                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     My Vehicles
                   </Link>
                   <Link
                     href="/profile"
-                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all cursor-pointer"
+                    className="px-4 py-3 rounded-xl font-medium text-gray-700 hover:bg-gray-100 transition-all cursor-pointer"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     My Profile
@@ -337,7 +337,7 @@ export function Navbar() {
               {status !== "authenticated" && (
                 <Link
                   href="/auth/signin"
-                  className="px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 text-center transition-all cursor-pointer"
+                  className="px-4 py-3 rounded-xl font-semibold text-white bg-[#5140BF] hover:opacity-90 text-center transition-all cursor-pointer"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign In
@@ -353,7 +353,7 @@ export function Navbar() {
       
       {/* Onboarding Banner */}
       {status === "authenticated" && session?.user && !session.user.university && pathname !== "/onboarding" && (
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+        <div className="bg-[#5140BF] text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium flex items-center gap-2">
@@ -362,7 +362,7 @@ export function Navbar() {
               </p>
               <Link
                 href="/onboarding"
-                className="text-sm font-semibold bg-white text-indigo-600 px-4 py-1.5 rounded-lg hover:bg-gray-50 transition-all cursor-pointer shadow-lg"
+                className="text-sm font-semibold bg-white text-[#5140BF] px-4 py-1.5 rounded-lg hover:bg-gray-50 transition-all cursor-pointer shadow-lg"
               >
                 Complete Profile
               </Link>

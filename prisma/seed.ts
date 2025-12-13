@@ -98,7 +98,7 @@ async function main() {
 
   // Create users
   console.log("👥 Creating users...");
-  const users = [];
+  const users: any[] = [];
   const domains = ["mcgill.ca", "concordia.ca", "umontreal.ca"];
   
   for (let i = 0; i < 25; i++) {
@@ -111,13 +111,20 @@ async function main() {
     // Hash a simple password for all seed users
     const hashedPassword = await bcrypt.hash("password123", 10);
     
+    // Generate realistic profile picture using Random User API with seed for consistency
+    // Using the user's index as seed ensures we get the same photo each time
+    const imageUrl = `https://randomuser.me/api/portraits/${i % 2 === 0 ? 'women' : 'men'}/${i % 50}.jpg`;
+    
+    const fullName = `${firstName} ${lastName}`;
+    
     const user = await prisma.user.create({
       data: {
-        name: `${firstName} ${lastName}`,
+        name: fullName,
         email,
         university,
         password: hashedPassword,
         phone: `+1 (514) ${randomInt(200, 999)}-${randomInt(1000, 9999)}`,
+        image: imageUrl,
         bio: i % 3 === 0 ? "Love road trips and meeting new people!" : null,
         emailVerified: new Date(),
         createdAt: randomDate(new Date(2024, 0, 1), new Date()),
@@ -136,7 +143,7 @@ async function main() {
   for (const user of usersWithVehicles) {
     const make = randomElement(vehicleMakes);
     const model = randomElement(vehicleModels[make]);
-    const vehicle = await prisma.vehicle.create({
+    const vehicle: any = await prisma.vehicle.create({
       data: {
         userId: user.id,
         make,

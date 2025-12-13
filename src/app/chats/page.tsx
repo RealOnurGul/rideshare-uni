@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface Participant {
@@ -40,8 +41,9 @@ interface Message {
   } | null;
 }
 
-export default function ChatsPage() {
+function ChatsPageContent() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -66,6 +68,7 @@ export default function ChatsPage() {
     if (session?.user?.id) {
       fetchChats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   const fetchChats = async () => {
@@ -74,6 +77,15 @@ export default function ChatsPage() {
       if (res.ok) {
         const data = await res.json();
         setChats(data);
+        
+        // If there's a rideId in the URL, select that chat
+        const rideId = searchParams.get("rideId");
+        if (rideId) {
+          const chat = data.find((c: Chat) => c.rideId === rideId);
+          if (chat) {
+            setSelectedChat(chat);
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching chats:", error);
@@ -95,8 +107,16 @@ export default function ChatsPage() {
       const data = await res.json();
 
       if (isPolling && data.messages.length > 0) {
-        setMessages((prev) => [...prev, ...data.messages]);
-        scrollToBottom();
+        // Deduplicate messages by ID to prevent duplicates
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map(m => m.id));
+          const newMessages = data.messages.filter((m: Message) => !existingIds.has(m.id));
+          if (newMessages.length > 0) {
+            scrollToBottom();
+            return [...prev, ...newMessages];
+          }
+          return prev;
+        });
       } else if (!isPolling) {
         setMessages(data.messages);
         setTimeout(scrollToBottom, 100);
@@ -141,7 +161,7 @@ export default function ChatsPage() {
     setIsSending(true);
 
     const optimisticMessage: Message = {
-      id: `temp-${Date.now()}`,
+      id: `temp-${Date.now()}-${Math.random()}`,
       content: messageContent,
       createdAt: new Date().toISOString(),
       isSystem: false,
@@ -151,7 +171,15 @@ export default function ChatsPage() {
         image: session?.user?.image || null,
       },
     };
-    setMessages((prev) => [...prev, optimisticMessage]);
+    
+    // Add optimistic message, ensuring no duplicates
+    setMessages((prev) => {
+      const existingIds = new Set(prev.map(m => m.id));
+      if (existingIds.has(optimisticMessage.id)) {
+        return prev;
+      }
+      return [...prev, optimisticMessage];
+    });
     scrollToBottom();
 
     try {
@@ -163,9 +191,19 @@ export default function ChatsPage() {
 
       if (res.ok) {
         const sentMessage = await res.json();
-        setMessages((prev) =>
-          prev.map((msg) => (msg.id === optimisticMessage.id ? sentMessage : msg))
-        );
+        // Replace optimistic message with real one, and ensure no duplicates
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map(m => m.id));
+          // Remove optimistic message and any duplicate of the sent message
+          const filtered = prev.filter((msg) => 
+            msg.id !== optimisticMessage.id && msg.id !== sentMessage.id
+          );
+          // Add the real message if it's not already there
+          if (!existingIds.has(sentMessage.id)) {
+            return [...filtered, sentMessage];
+          }
+          return filtered;
+        });
         lastFetchTime.current = sentMessage.createdAt;
         fetchChats();
       } else {
@@ -205,7 +243,7 @@ export default function ChatsPage() {
 
   if (status === "loading") {
     return (
-      <div className="flex justify-center items-center h-[calc(100vh-64px)] bg-white">
+      <div className="flex justify-center items-center h-[calc(100vh-80px)] bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-600 border-t-transparent"></div>
       </div>
     );
@@ -213,7 +251,7 @@ export default function ChatsPage() {
 
   if (status === "unauthenticated") {
     return (
-      <div className="h-[calc(100vh-64px)] bg-white flex items-center justify-center">
+      <div className="h-[calc(100vh-80px)] bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,11 +269,11 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-white">
+    <div className="flex h-[calc(100vh-80px)] bg-white overflow-hidden">
       {/* Sidebar */}
-      <div className={`${selectedChat ? "hidden md:flex" : "flex"} flex-col w-full md:w-[350px] border-r border-gray-200`}>
+      <div className={`${selectedChat ? "hidden md:flex" : "flex"} flex-col w-full md:w-[350px] border-r border-gray-200 overflow-hidden`}>
         {/* Sidebar Header */}
-        <div className="p-4 flex items-center justify-between">
+        <div className="flex-shrink-0 p-4 flex items-center justify-between border-b border-gray-200">
           <h1 className="text-2xl font-bold text-gray-900">Chats</h1>
           <div className="flex items-center gap-2">
             <button className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
@@ -247,7 +285,7 @@ export default function ChatsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="px-4 pb-2 flex gap-2">
+        <div className="flex-shrink-0 px-4 py-2 flex gap-2 border-b border-gray-200">
           <button
             onClick={() => { setShowArchived(false); setSelectedChat(null); }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer ${
@@ -267,7 +305,7 @@ export default function ChatsPage() {
         </div>
 
         {/* Chat List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {isLoadingChats ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-600 border-t-transparent"></div>
@@ -343,7 +381,7 @@ export default function ChatsPage() {
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="h-16 px-4 flex items-center gap-3 border-b border-gray-200">
+            <div className="flex-shrink-0 h-16 px-4 flex items-center gap-3 border-b border-gray-200">
               <button
                 onClick={() => setSelectedChat(null)}
                 className="md:hidden p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
@@ -385,7 +423,7 @@ export default function ChatsPage() {
             </div>
 
             {/* Messages */}
-            <div className={`flex-1 overflow-y-auto px-4 py-2 ${isCompletedOrCancelled ? "opacity-50" : ""}`}>
+            <div className={`flex-1 overflow-y-auto px-4 py-2 min-h-0 ${isCompletedOrCancelled ? "opacity-50" : ""}`}>
               {isLoadingMessages ? (
                 <div className="flex justify-center items-center h-full">
                   <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-600 border-t-transparent"></div>
@@ -406,7 +444,12 @@ export default function ChatsPage() {
                 </div>
               ) : (
                 <div className="space-y-0.5">
-                  {messages.map((msg, index) => {
+                  {messages
+                    .filter((msg, index, self) => 
+                      // Remove duplicates by ID, keeping the first occurrence
+                      index === self.findIndex((m) => m.id === msg.id)
+                    )
+                    .map((msg, index) => {
                     // System messages
                     if (msg.isSystem || !msg.sender) {
                       return (
@@ -503,7 +546,7 @@ export default function ChatsPage() {
                 <p className="text-sm text-gray-500">This chat is read-only</p>
               </div>
             ) : (
-              <form onSubmit={handleSend} className="p-3 border-t border-gray-200">
+              <form onSubmit={handleSend} className="flex-shrink-0 p-3 border-t border-gray-200">
                 <div className="flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2">
                   <input
                     type="text"
@@ -546,5 +589,17 @@ export default function ChatsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ChatsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-[calc(100vh-80px)] bg-white">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-600 border-t-transparent"></div>
+      </div>
+    }>
+      <ChatsPageContent />
+    </Suspense>
   );
 }

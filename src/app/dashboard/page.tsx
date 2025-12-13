@@ -286,6 +286,10 @@ export default function DashboardPage() {
     });
   };
 
+  const formatPrice = (price: number): string => {
+    return price.toFixed(2);
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
@@ -529,8 +533,8 @@ export default function DashboardPage() {
                             </p>
                             <div className="space-y-2">
                               {unconfirmedBookings.map((booking) => (
-                                <div key={booking.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-xl">
-                                  <div className="flex items-center gap-3">
+                                <div key={booking.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3 bg-orange-50 rounded-xl">
+                                  <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
                                     {booking.passenger.image ? (
                                       <img src={booking.passenger.image} alt="" className="w-8 h-8 rounded-full" />
                                     ) : (
@@ -540,11 +544,15 @@ export default function DashboardPage() {
                                         </span>
                                       </div>
                                     )}
-                                    <span className="font-medium text-gray-900">
+                                  </div>
+                                  <div className="flex items-center justify-center">
+                                    <span className="font-medium text-gray-900 text-center">
                                       {booking.passenger.name || "Passenger"}
                                     </span>
                                   </div>
-                                  <span className="text-sm text-orange-600">Awaiting confirmation</span>
+                                  <div className="flex items-center justify-center">
+                                    <span className="text-sm text-orange-600 whitespace-nowrap">Awaiting confirmation</span>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -564,8 +572,8 @@ export default function DashboardPage() {
                               );
                               const canRate = !driverReviewedPassenger && canReview;
                               return (
-                                <div key={booking.id} className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
-                                    <div className="flex items-center gap-3">
+                                <div key={booking.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3 bg-green-50 rounded-xl">
+                                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
                                       {booking.passenger.image ? (
                                         <img src={booking.passenger.image} alt="" className="w-8 h-8 rounded-full" />
                                       ) : (
@@ -575,11 +583,13 @@ export default function DashboardPage() {
                                           </span>
                                         </div>
                                       )}
-                                      <span className="font-medium text-gray-900">
+                                    </div>
+                                    <div className="flex items-center justify-center">
+                                      <span className="font-medium text-gray-900 text-center">
                                         {booking.passenger.name || "Passenger"}
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-col sm:flex-row">
+                                    <div className="flex items-center justify-center gap-2 flex-col sm:flex-row">
                                       {canRate && (
                                         <ReviewCountdown completedAt={completionTime} />
                                       )}
@@ -743,7 +753,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-4">
                           <span className="text-gray-600">{ride.seatsAvailable}/{ride.seatsTotal} seats</span>
-                          <span className="text-2xl font-bold text-gray-900">${ride.pricePerSeat}</span>
+                          <span className="text-2xl font-bold text-gray-900">${formatPrice(ride.pricePerSeat)}</span>
                         </div>
                       </div>
 
@@ -797,8 +807,8 @@ export default function DashboardPage() {
                           </div>
                           <div className="space-y-2">
                             {ride.bookings.filter(b => b.status !== "cancelled" && b.status !== "declined").map((booking) => (
-                              <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                <div className="flex items-center gap-3">
+                              <div key={booking.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                                <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
                                   {booking.passenger.image ? (
                                     <img src={booking.passenger.image} alt="" className="w-8 h-8 rounded-full object-cover" />
                                   ) : (
@@ -808,7 +818,9 @@ export default function DashboardPage() {
                                       </span>
                                     </div>
                                   )}
-                                  <div>
+                                </div>
+                                <div className="flex items-center justify-center">
+                                  <div className="text-center">
                                     <span className="font-medium text-gray-900">
                                       {booking.passenger.name || "Passenger"}
                                     </span>
@@ -820,7 +832,7 @@ export default function DashboardPage() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-center gap-2">
                                   {booking.status === "pending" && ride.status === "upcoming" ? (
                                     <>
                                       <button
