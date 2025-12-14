@@ -91,7 +91,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent"></div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 w-full z-10">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-20 lg:pt-12 lg:pb-32 w-full z-10">
           <div className="grid lg:grid-cols-2 gap-20 items-center">
             {/* Left Content */}
             <div className="space-y-8 text-white">

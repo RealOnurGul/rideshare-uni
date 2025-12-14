@@ -63,8 +63,8 @@ export function Navbar() {
                 onMouseLeave={(e) => {
                   // Only close if we're actually leaving the entire dropdown area
                   // Check if we're moving to a related target (dropdown menu)
-                  const relatedTarget = e.relatedTarget as HTMLElement;
-                  if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+                  const relatedTarget = e.relatedTarget;
+                  if (!relatedTarget || !(relatedTarget instanceof Node) || !e.currentTarget.contains(relatedTarget)) {
                     setIsHowItWorksHovered(false);
                   }
                 }}
