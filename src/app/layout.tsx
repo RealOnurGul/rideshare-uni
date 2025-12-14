@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
 import { PendingConfirmationsBanner } from "@/components/pending-confirmations-banner";
+import { DemoDisclaimer } from "@/components/demo-disclaimer";
 
 const inter = Inter({
  subsets: ["latin"],
@@ -22,13 +23,14 @@ export default function RootLayout({
 }>) {
  return (
  <html lang="en" suppressHydrationWarning>
- <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
- <Providers>
- <Navbar />
- <PendingConfirmationsBanner />
- <main className="flex-1">{children}</main>
- </Providers>
- </body>
+      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
+        <Providers>
+          <Navbar />
+          <DemoDisclaimer />
+          <PendingConfirmationsBanner />
+          <main className="flex-1">{children}</main>
+        </Providers>
+      </body>
  </html>
  );
 }
