@@ -46,3 +46,6 @@ prisma/dev.db
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# deployment guide
+DEPLOYMENT.md

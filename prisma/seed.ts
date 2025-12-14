@@ -15,17 +15,65 @@ const canadianLocations = [
   { city: "Windsor", lat: 42.3149, lng: -83.0364 },
 ];
 
+// Expanded list of Canadian universities
 const universities = [
   "McGill University",
   "Concordia University",
   "Université de Montréal",
+  "University of Toronto",
+  "University of Ottawa",
+  "University of British Columbia",
+  "McMaster University",
+  "University of Alberta",
+  "University of Waterloo",
+  "Western University",
+  "Queen's University",
+  "University of Calgary",
+  "Simon Fraser University",
+  "York University",
+  "Dalhousie University",
+  "Université Laval",
+  "University of Victoria",
+  "University of Saskatchewan",
 ];
 
-const firstNames = [
-  "Alex", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Avery", "Quinn",
-  "Emma", "Olivia", "Noah", "Liam", "Sophia", "Isabella", "Mia", "Charlotte",
-  "James", "Benjamin", "Lucas", "Henry", "Alexander", "Mason", "Michael", "Ethan",
-  "Sarah", "Emily", "Jessica", "Ashley", "Amanda", "Melissa", "Nicole", "Michelle",
+// Map of university domains
+const universityDomains: Record<string, string> = {
+  "McGill University": "mcgill.ca",
+  "Concordia University": "mail.concordia.ca",
+  "Université de Montréal": "umontreal.ca",
+  "University of Toronto": "mail.utoronto.ca",
+  "University of Ottawa": "uottawa.ca",
+  "University of British Columbia": "student.ubc.ca",
+  "McMaster University": "mcmaster.ca",
+  "University of Alberta": "ualberta.ca",
+  "University of Waterloo": "uwaterloo.ca",
+  "Western University": "uwo.ca",
+  "Queen's University": "queensu.ca",
+  "University of Calgary": "ucalgary.ca",
+  "Simon Fraser University": "sfu.ca",
+  "York University": "my.yorku.ca",
+  "Dalhousie University": "dal.ca",
+  "Université Laval": "ulaval.ca",
+  "University of Victoria": "uvic.ca",
+  "University of Saskatchewan": "usask.ca",
+};
+
+// Separate male and female first names for proper gender matching
+const maleFirstNames = [
+  "Liam", "Noah", "Oliver", "Ethan", "Aiden", "Lucas", "Mason", "Jackson",
+  "James", "Benjamin", "Henry", "Alexander", "Michael", "Daniel", "Matthew", "David",
+  "Nathan", "Samuel", "Jacob", "Ryan", "Tyler", "Nicholas", "Andrew", "Christopher",
+  "Joshua", "Connor", "Jonathan", "Caleb", "Luke", "Jack", "Owen", "Isaac",
+  "Sebastian", "Julian", "Aiden", "Evan", "Adam", "Nathaniel", "Max", "Leo"
+];
+
+const femaleFirstNames = [
+  "Emma", "Olivia", "Sophia", "Isabella", "Mia", "Charlotte", "Amelia", "Harper",
+  "Emily", "Abigail", "Elizabeth", "Ella", "Avery", "Sofia", "Scarlett", "Grace",
+  "Chloe", "Victoria", "Riley", "Aria", "Lily", "Natalie", "Zoe", "Hannah",
+  "Lillian", "Addison", "Aubrey", "Eleanor", "Stella", "Savannah", "Leah", "Audrey",
+  "Bella", "Nora", "Lucy", "Anna", "Caroline", "Maya", "Layla", "Penelope"
 ];
 
 const lastNames = [
@@ -99,23 +147,54 @@ async function main() {
   // Create users
   console.log("👥 Creating users...");
   const users: any[] = [];
-  const domains = ["mcgill.ca", "concordia.ca", "umontreal.ca"];
   
-  for (let i = 0; i < 25; i++) {
-    const firstName = randomElement(firstNames);
+  // Fetch young people images from RandomUser API (age 20-30)
+  console.log("📸 Fetching profile pictures...");
+  const imageCache: string[] = [];
+  for (let i = 0; i < 50; i++) {
+    const gender = i % 2 === 0 ? 'female' : 'male';
+    try {
+      const response = await fetch(`https://randomuser.me/api/?gender=${gender}&seed=${i}&nat=ca,us&age=20-30`);
+      const data = await response.json();
+      if (data.results && data.results[0] && data.results[0].picture && data.results[0].picture.large) {
+        imageCache.push(data.results[0].picture.large);
+      } else {
+        // Fallback to portrait service
+        const portraitId = i % 99;
+        imageCache.push(`https://randomuser.me/api/portraits/${gender === 'female' ? 'women' : 'men'}/${portraitId}.jpg`);
+      }
+    } catch (error) {
+      // Fallback to portrait service on error
+      const portraitId = i % 99;
+      imageCache.push(`https://randomuser.me/api/portraits/${gender === 'female' ? 'women' : 'men'}/${portraitId}.jpg`);
+    }
+    // Small delay to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  // Create 50 users with proper gender matching
+  for (let i = 0; i < 50; i++) {
+    // Determine gender first (50/50 split)
+    const isFemale = i % 2 === 0;
+    const firstName = isFemale 
+      ? randomElement(femaleFirstNames)
+      : randomElement(maleFirstNames);
     const lastName = randomElement(lastNames);
-    const domain = randomElement(domains);
+    const university = randomElement(universities);
+    const domain = universityDomains[university];
     const email = generateEmail(firstName, lastName, domain);
-    const university = universities[domains.indexOf(domain)];
     
     // Hash a simple password for all seed users
     const hashedPassword = await bcrypt.hash("password123", 10);
     
-    // Generate realistic profile picture using Random User API with seed for consistency
-    // Using the user's index as seed ensures we get the same photo each time
-    const imageUrl = `https://randomuser.me/api/portraits/${i % 2 === 0 ? 'women' : 'men'}/${i % 50}.jpg`;
+    // Use cached image from RandomUser API
+    const imageUrl = imageCache[i];
     
     const fullName = `${firstName} ${lastName}`;
+    
+    // Generate phone number (Canadian format)
+    const areaCodes = ["514", "438", "450", "418", "819", "613", "416", "647", "437", "905", "289", "365", "604", "778", "250", "236", "403", "587", "780", "306", "204", "902", "506"];
+    const areaCode = randomElement(areaCodes);
     
     const user = await prisma.user.create({
       data: {
@@ -123,9 +202,14 @@ async function main() {
         email,
         university,
         password: hashedPassword,
-        phone: `+1 (514) ${randomInt(200, 999)}-${randomInt(1000, 9999)}`,
+        phone: `+1 (${areaCode}) ${randomInt(200, 999)}-${randomInt(1000, 9999)}`,
         image: imageUrl,
-        bio: i % 3 === 0 ? "Love road trips and meeting new people!" : null,
+        bio: i % 3 === 0 ? randomElement([
+          "Love road trips and meeting new people!",
+          "Student at " + university.split(" ")[0] + ". Always down for a ride!",
+          "Looking to split gas costs with fellow students.",
+          null,
+        ]) : null,
         emailVerified: new Date(),
         createdAt: randomDate(new Date(2024, 0, 1), new Date()),
       },
@@ -135,10 +219,10 @@ async function main() {
 
   console.log(`✅ Created ${users.length} users`);
 
-  // Create vehicles for some users
+  // Create vehicles for some users (about 60% of users have vehicles)
   console.log("🚗 Creating vehicles...");
   const vehicles = [];
-  const usersWithVehicles = users.slice(0, 15); // First 15 users have vehicles
+  const usersWithVehicles = users.slice(0, 30); // First 30 users (60% of 50) have vehicles
   
   for (const user of usersWithVehicles) {
     const make = randomElement(vehicleMakes);
@@ -205,7 +289,7 @@ async function main() {
         destinationLat: destination.lat + randomFloat(-0.1, 0.1),
         destinationLng: destination.lng + randomFloat(-0.1, 0.1),
         dateTime: rideDate,
-        pricePerSeat: Math.round(randomFloat(15, 80) * 100) / 100, // Round to 2 decimal places
+        pricePerSeat: Math.round(randomFloat(15, 80) * 10) / 10, // Round to nearest 10 cents (ends in .10, .20, .30, etc.)
         seatsTotal,
         seatsAvailable,
         status,
