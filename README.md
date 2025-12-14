@@ -59,7 +59,11 @@ cp .env.example .env
 
 2. Fill in your environment variables in `.env`:
 ```env
+# For local development with SQLite:
 DATABASE_URL="file:./dev.db"
+# For production with PostgreSQL (Neon/Supabase):
+# DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
+
 NEXTAUTH_SECRET="generate-with-openssl-rand-base64-32"
 NEXTAUTH_URL="http://localhost:3000"
 GOOGLE_CLIENT_ID="your-client-id"
@@ -87,7 +91,7 @@ GOOGLE_CLIENT_SECRET="your-client-secret"
 | Next.js 15 | React framework |
 | TypeScript | Type safety |
 | Prisma | Database ORM |
-| SQLite | Local database |
+| PostgreSQL | Production database (SQLite for local dev) |
 | NextAuth.js | Authentication |
 | Tailwind CSS | Styling |
 | Leaflet | Interactive maps |
@@ -159,20 +163,32 @@ src/
 
 ## Database
 
-Each installation has its own local SQLite database. When you clone this repo:
+**Local Development:**
+- Uses SQLite (file-based database)
 - Run `npx prisma db push` to create tables
-- Your database starts empty (no shared data)
+- Database file: `prisma/dev.db`
+
+**Production:**
+- Uses PostgreSQL (configured in `prisma/schema.prisma`)
+- Free options: Neon, Supabase, or Railway
+- Run `npx prisma db push` to create tables
+- Run `npm run seed` to populate demo data
 - View/edit data with `npx prisma studio`
 
 ## Deploying
 
 ### Option 1: Deploying to Vercel (Recommended for Production)
 
+**✅ Already configured for PostgreSQL!**
+
 When ready to deploy:
-1. Switch SQLite to [Neon](https://neon.tech) or [Supabase](https://supabase.com) (free PostgreSQL)
-2. Update `prisma/schema.prisma`: change `provider` from `"sqlite"` to `"postgresql"`
-3. Set `DATABASE_URL` in Vercel environment variables
+1. Get a free PostgreSQL database from [Neon](https://neon.tech) or [Supabase](https://supabase.com)
+2. Set `DATABASE_URL` in Vercel environment variables (PostgreSQL connection string)
+3. Set `NEXTAUTH_SECRET` and `NEXTAUTH_URL` in Vercel
 4. Deploy!
+5. Run `npx prisma db push` and `npm run seed` to populate demo data
+
+See `LAUNCH_CHECKLIST.md` for detailed deployment steps.
 
 ### Option 2: Deploying to Cloudflare Pages (Demo/Portfolio Mode)
 
