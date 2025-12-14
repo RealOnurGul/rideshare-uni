@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Only allow in development or with admin check
+    // For production, you should add proper admin authentication
+    if (process.env.NODE_ENV === "production") {
+      // In production, require authentication and check if user is admin
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      // TODO: Add admin role check here when you implement admin system
+      // For now, blocking in production for security
+      return NextResponse.json({ error: "Not available in production" }, { status: 403 });
+    }
+
     // Get 3 random users from the database
     const users = await prisma.user.findMany({
       take: 3,
