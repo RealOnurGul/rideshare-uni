@@ -82,6 +82,8 @@ export default function RideDetailPage({
   const [actionLoading, setActionLoading] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showCancellationPolicy, setShowCancellationPolicy] = useState(false);
+  const [routeDistance, setRouteDistance] = useState<number | null>(null);
+  const [routeDuration, setRouteDuration] = useState<number | null>(null);
 
   const fetchRide = async () => {
     try {
@@ -237,6 +239,28 @@ export default function RideDetailPage({
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const formatDistance = (meters: number): string => {
+    if (meters < 1000) {
+      return `${Math.round(meters)} m`;
+    }
+    return `${(meters / 1000).toFixed(1)} km`;
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  const handleRouteCalculated = (distance: number, duration: number) => {
+    setRouteDistance(distance);
+    setRouteDuration(duration);
   };
 
   const getLuggageLabel = (size: string) => {
@@ -402,7 +426,28 @@ export default function RideDetailPage({
                   destinationLat={ride.destinationLat!}
                   destinationLng={ride.destinationLng!}
                   destinationAddress={ride.destination}
+                  onRouteCalculated={handleRouteCalculated}
                 />
+              )}
+              
+              {/* Route Info */}
+              {(routeDistance !== null || routeDuration !== null) && (
+                <div className="bg-[#5140BF]/5 border border-[#5140BF]/20 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    {routeDistance !== null && (
+                      <div>
+                        <div className="text-xs font-semibold text-[#5140BF] mb-1">DISTANCE</div>
+                        <div className="text-lg font-bold text-gray-900">{formatDistance(routeDistance)}</div>
+                      </div>
+                    )}
+                    {routeDuration !== null && (
+                      <div>
+                        <div className="text-xs font-semibold text-[#5140BF] mb-1">DURATION</div>
+                        <div className="text-lg font-bold text-gray-900">{formatDuration(routeDuration)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 

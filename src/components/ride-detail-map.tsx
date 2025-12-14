@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 
 interface RideDetailMapProps {
@@ -10,6 +10,13 @@ interface RideDetailMapProps {
   destinationLat: number;
   destinationLng: number;
   destinationAddress: string;
+  onRouteCalculated?: (distance: number, duration: number) => void;
+}
+
+interface RouteInfo {
+  distance: number; // in meters
+  duration: number; // in seconds
+  geometry: [number, number][]; // decoded polyline coordinates
 }
 
 function RideDetailMapInner({
@@ -19,6 +26,7 @@ function RideDetailMapInner({
   destinationLat,
   destinationLng,
   destinationAddress,
+  onRouteCalculated,
 }: RideDetailMapProps) {
   const [leaflet, setLeaflet] = useState<{
     L: typeof import("leaflet");
@@ -29,6 +37,8 @@ function RideDetailMapInner({
     Polyline: typeof import("react-leaflet").Polyline;
     useMap: typeof import("react-leaflet").useMap;
   } | null>(null);
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 
   useEffect(() => {
     const loadLeaflet = async () => {
@@ -38,6 +48,83 @@ function RideDetailMapInner({
     };
     loadLeaflet();
   }, []);
+
+  // Calculate route using OSRM (free and open source)
+  const calculateRoute = useCallback(async () => {
+    setIsCalculatingRoute(true);
+    try {
+      // Using OSRM demo server (free, no API key needed)
+      const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destinationLng},${destinationLat}?overview=full&geometries=geojson`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.code === "Ok" && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        // OSRM returns GeoJSON coordinates as [lng, lat], convert to [lat, lng] for Leaflet
+        const geometry = route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]] as [number, number]);
+        
+        const routeData = {
+          distance: route.distance,
+          duration: route.duration,
+          geometry,
+        };
+        
+        setRouteInfo(routeData);
+        
+        // Notify parent component of route info
+        if (onRouteCalculated) {
+          onRouteCalculated(route.distance, route.duration);
+        }
+      } else {
+        // Fallback to straight line if routing fails
+        const straightLineDistance = Math.sqrt(
+          Math.pow((destinationLat - originLat) * 111000, 2) + 
+          Math.pow((destinationLng - originLng) * 111000 * Math.cos(originLat * Math.PI / 180), 2)
+        );
+        const estimatedDuration = straightLineDistance / 1000 / 80 * 3600; // Assume 80 km/h average
+        
+        const fallbackRoute = {
+          distance: straightLineDistance,
+          duration: estimatedDuration,
+          geometry: [[originLat, originLng], [destinationLat, destinationLng]] as [number, number][],
+        };
+        
+        setRouteInfo(fallbackRoute);
+        if (onRouteCalculated) {
+          onRouteCalculated(straightLineDistance, estimatedDuration);
+        }
+      }
+    } catch (error) {
+      console.error("Route calculation error:", error);
+      // Fallback to straight line with estimated distance/duration
+      const straightLineDistance = Math.sqrt(
+        Math.pow((destinationLat - originLat) * 111000, 2) + 
+        Math.pow((destinationLng - originLng) * 111000 * Math.cos(originLat * Math.PI / 180), 2)
+      );
+      const estimatedDuration = straightLineDistance / 1000 / 80 * 3600;
+      
+      const fallbackRoute = {
+        distance: straightLineDistance,
+        duration: estimatedDuration,
+        geometry: [[originLat, originLng], [destinationLat, destinationLng]] as [number, number][],
+      };
+      
+      setRouteInfo(fallbackRoute);
+      if (onRouteCalculated) {
+        onRouteCalculated(straightLineDistance, estimatedDuration);
+      }
+    } finally {
+      setIsCalculatingRoute(false);
+    }
+  }, [originLat, originLng, destinationLat, destinationLng, onRouteCalculated]);
+
+  // Calculate route when component mounts
+  useEffect(() => {
+    if (leaflet) {
+      calculateRoute();
+    }
+  }, [leaflet, calculateRoute]);
 
   if (!leaflet) {
     return (
@@ -57,16 +144,16 @@ function RideDetailMapInner({
 
   const originIcon = L.divIcon({
     className: "custom-marker",
-    html: `<div style="background: #9333ea; width: 28px; height: 28px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
+    html: `<div style="background: #5140BF; width: 32px; height: 32px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.3);"></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
   });
 
   const destinationIcon = L.divIcon({
     className: "custom-marker",
-    html: `<div style="background: #7c3aed; width: 28px; height: 28px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg); width: 8px; height: 8px; background: white; border-radius: 50%;"></div></div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
+    html: `<div style="background: #5140BF; width: 32px; height: 32px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.3);"></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
   });
 
   // Component to smoothly fit bounds after map loads
@@ -75,10 +162,15 @@ function RideDetailMapInner({
     
     useEffect(() => {
       const timeout = setTimeout(() => {
-        const bounds = L.latLngBounds(
-          [originLat, originLng],
-          [destinationLat, destinationLng]
-        );
+        let bounds: L.LatLngBounds;
+        if (routeInfo && routeInfo.geometry.length > 0) {
+          bounds = L.latLngBounds(routeInfo.geometry);
+        } else {
+          bounds = L.latLngBounds(
+            [originLat, originLng],
+            [destinationLat, destinationLng]
+          );
+        }
         map.flyToBounds(bounds, {
           padding: [60, 60],
           maxZoom: 12,
@@ -88,7 +180,7 @@ function RideDetailMapInner({
       }, 200);
       
       return () => clearTimeout(timeout);
-    }, [map]);
+    }, [map, routeInfo]);
     
     return null;
   }
@@ -97,45 +189,88 @@ function RideDetailMapInner({
   const centerLng = (originLng + destinationLng) / 2;
 
   return (
-    <MapContainer
-      center={[centerLat, centerLng]}
-      zoom={10}
-      style={{ height: "300px", width: "100%", borderRadius: "0.75rem" }}
-      className="z-0"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div className="relative">
+      <MapContainer
+        center={[centerLat, centerLng]}
+        zoom={10}
+        style={{ height: "300px", width: "100%", borderRadius: "0.75rem" }}
+        className="z-0"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
-      <FitBounds />
+        <FitBounds />
 
-      <Marker position={[originLat, originLng]} icon={originIcon}>
-        <Popup>
-          <div className="text-sm">
-            <p className="font-semibold text-purple-600">Pickup</p>
-            <p className="text-gray-600">{originAddress}</p>
-          </div>
-        </Popup>
-      </Marker>
+        {/* Route polyline - glowing purple effect - only show when route is calculated */}
+        {routeInfo && routeInfo.geometry && routeInfo.geometry.length > 0 && !isCalculatingRoute && (
+          <>
+            {/* Glow layer 1 - outer glow */}
+            <Polyline
+              positions={routeInfo.geometry}
+              pathOptions={{ 
+                color: "#5140BF",
+                weight: 10,
+                opacity: 0.2,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+            {/* Glow layer 2 - middle glow */}
+            <Polyline
+              positions={routeInfo.geometry}
+              pathOptions={{ 
+                color: "#5140BF",
+                weight: 7,
+                opacity: 0.4,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+            {/* Main route line */}
+            <Polyline
+              positions={routeInfo.geometry}
+              pathOptions={{ 
+                color: "#5140BF",
+                weight: 5,
+                opacity: 1,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+          </>
+        )}
 
-      <Marker position={[destinationLat, destinationLng]} icon={destinationIcon}>
-        <Popup>
-          <div className="text-sm">
-            <p className="font-semibold text-purple-600">Dropoff</p>
-            <p className="text-gray-600">{destinationAddress}</p>
-          </div>
-        </Popup>
-      </Marker>
+        <Marker position={[originLat, originLng]} icon={originIcon}>
+          <Popup>
+            <div className="text-sm">
+              <p className="font-semibold text-[#5140BF]">Pickup</p>
+              <p className="text-gray-600">{originAddress}</p>
+            </div>
+          </Popup>
+        </Marker>
 
-      <Polyline
-        positions={[
-          [originLat, originLng],
-          [destinationLat, destinationLng],
-        ]}
-        pathOptions={{ color: "#9333ea", weight: 3, dashArray: "10, 10" }}
-      />
-    </MapContainer>
+        <Marker position={[destinationLat, destinationLng]} icon={destinationIcon}>
+          <Popup>
+            <div className="text-sm">
+              <p className="font-semibold text-[#5140BF]">Dropoff</p>
+              <p className="text-gray-600">{destinationAddress}</p>
+            </div>
+          </Popup>
+        </Marker>
+      </MapContainer>
+      
+      {isCalculatingRoute && (
+        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-xs text-gray-700 flex items-center gap-2">
+          <svg className="animate-spin h-4 w-4 text-[#5140BF]" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span>Calculating route...</span>
+        </div>
+      )}
+    </div>
   );
 }
 
