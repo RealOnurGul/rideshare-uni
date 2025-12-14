@@ -204,7 +204,10 @@ export function Navbar() {
                     </div>
                   </Link>
                   <button
-                    onClick={() => signOut({ callbackUrl: "/" })}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      signOut({ callbackUrl: window.location.origin + "/" });
+                    }}
                     className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200 cursor-pointer"
                   >
                     Sign Out
@@ -324,8 +327,9 @@ export function Navbar() {
                     My Profile
                   </Link>
                   <button
-                    onClick={() => {
-                      signOut({ callbackUrl: "/" });
+                    onClick={(e) => {
+                      e.preventDefault();
+                      signOut({ callbackUrl: window.location.origin + "/" });
                       setIsMenuOpen(false);
                     }}
                     className="px-4 py-3 text-left rounded-xl font-medium text-red-600 hover:bg-red-50 transition-all cursor-pointer"

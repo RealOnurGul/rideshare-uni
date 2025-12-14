@@ -547,7 +547,10 @@ export default function ProfilePage() {
                 <div className="text-sm text-gray-500">Sign out of your account on this device</div>
               </div>
               <button
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={(e) => {
+                  e.preventDefault();
+                  signOut({ callbackUrl: window.location.origin + "/" });
+                }}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
               >
                 Sign Out
