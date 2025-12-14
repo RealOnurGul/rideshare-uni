@@ -47,5 +47,7 @@ prisma/dev.db
 *.tsbuildinfo
 next-env.d.ts
 
-# deployment guide
+# deployment guides
 DEPLOYMENT.md
+LAUNCH_CHECKLIST.md
+SIMPLE_DEPLOY.md
