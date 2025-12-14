@@ -394,19 +394,25 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            {["McGill", "UofT", "Laval", "Concordia", "UdeM", "Ottawa"].map((uni, index) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {[
+              { short: "McGill", full: "McGill University" },
+              { short: "Concordia", full: "Concordia University" },
+              { short: "UOttawa", full: "University of Ottawa" },
+              { short: "UofT", full: "University of Toronto" },
+              { short: "UdeM", full: "Université de Montréal" },
+            ].map((uni, index) => (
               <div 
                 key={index}
                 className="bg-purple-50/30 border border-purple-100/50 rounded-lg p-6 text-center hover:border-purple-200/50 hover:bg-white transition-all"
               >
-                <div className="text-2xl font-bold text-gray-900 mb-2">{uni}</div>
-                <div className="text-sm text-gray-600">University</div>
+                <div className="text-lg font-bold text-gray-900 mb-2">{uni.short}</div>
+                <div className="text-xs text-gray-600">{uni.full}</div>
               </div>
             ))}
           </div>
           <div className="text-center mt-8">
-            <span className="text-gray-600">+ 44 more Canadian universities</span>
+            <span className="text-gray-600">+ 70+ more Canadian universities</span>
           </div>
         </div>
       </section>

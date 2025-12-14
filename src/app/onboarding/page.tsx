@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ALLOWED_DOMAINS } from "@/lib/allowed-domains";
+import { isAllowedDomain } from "@/lib/allowed-domains";
 
 export default function OnboardingPage() {
   const { data: session, status, update } = useSession();
@@ -27,8 +27,7 @@ export default function OnboardingPage() {
   }, [status, session, router]);
 
   const validateEmail = (email: string) => {
-    const domain = email.split("@")[1]?.toLowerCase();
-    return ALLOWED_DOMAINS.includes(domain);
+    return isAllowedDomain(email);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,7 +41,7 @@ export default function OnboardingPage() {
     }
 
     if (!validateEmail(formData.universityEmail)) {
-      setError("Please use a valid university email (@mcgill.ca, @concordia.ca, or @umontreal.ca)");
+      setError("Please use a valid Canadian university email address. Your email must end with one of our supported university domains.");
       return;
     }
 

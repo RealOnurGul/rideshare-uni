@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ALLOWED_DOMAINS, getUniversityName } from "@/lib/allowed-domains";
+import { ALLOWED_DOMAINS, getUniversityName, isAllowedDomain } from "@/lib/allowed-domains";
 
 export async function POST(request: Request) {
  try {
@@ -32,16 +32,17 @@ export async function POST(request: Request) {
  return NextResponse.json({ error: "University email is required" }, { status: 400 });
  }
 
- const domain = universityEmail.split("@")[1]?.toLowerCase();
- if (!domain || !ALLOWED_DOMAINS.includes(domain)) {
+ // Validate university email - must end with an allowed domain
+ if (!isAllowedDomain(universityEmail)) {
  return NextResponse.json(
- { error: "Invalid university email. Use @mcgill.ca, @concordia.ca, or @umontreal.ca" },
+ { error: "Invalid university email. Please use a valid Canadian university email address. Your email must end with one of our supported university domains." },
  { status: 400 }
  );
  }
 
  // Get university name from domain
- const university = getUniversityName(domain);
+ const domain = universityEmail.split("@")[1]?.toLowerCase();
+ const university = getUniversityName(domain || "");
  
  if (!university) {
  return NextResponse.json(
