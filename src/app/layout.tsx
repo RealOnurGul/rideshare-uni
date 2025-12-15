@@ -5,6 +5,7 @@ import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
 import { PendingConfirmationsBanner } from "@/components/pending-confirmations-banner";
 import { DemoDisclaimer } from "@/components/demo-disclaimer";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
  subsets: ["latin"],
@@ -29,6 +30,7 @@ export default function RootLayout({
           <DemoDisclaimer />
           <PendingConfirmationsBanner />
           <main className="flex-1">{children}</main>
+          <Analytics />
         </Providers>
       </body>
  </html>
